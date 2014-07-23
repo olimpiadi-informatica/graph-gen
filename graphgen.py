@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 #
 # graph-gen - https://github.com/wil93/graph-gen
-# Copyright (c) 2011-2012 Giorgio Audrito
-# Copyright (c) 2014 William Di Luigi <williamdiluigi@gmail.com>
-# Copyright (c) 2014 Gabriele Farina <gabr.farina@gmail.com>
+# Copyright © 2011-2012 Giorgio Audrito <giorgio.audrito@gmail.com>
+# Copyright © 2014 William Di Luigi <williamdiluigi@gmail.com>
+# Copyright © 2014 Gabriele Farina <gabr.farina@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

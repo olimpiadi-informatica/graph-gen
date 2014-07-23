@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 # graph-gen - https://github.com/wil93/graph-gen
-# Copyright (c) 2011-2012 Giorgio Audrito
-# Copyright (c) 2014 William Di Luigi <williamdiluigi@gmail.com>
-# Copyright (c) 2014 Gabriele Farina <gabr.farina@gmail.com>
+# Copyright © 2014 Gabriele Farina <gabr.farina@gmail.com>
+# Copyright © 2014 William Di Luigi <williamdiluigi@gmail.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,11 +22,18 @@ from distutils.core import setup
 
 setup(
 	name = 'graph-gen',
-	version = '1.0',
+	version = '0.1',
 	description = 'graph-gen: graph generation library for Python',
 	author = 'Giorgio Audrito, William Di Luigi, Gabriele Farina',
 	author_email = 'williamdiluigi@gmail.com, gabr.farina@gmail.com',
 	url = 'https://github.com/wil93/graph-gen',
-
-	py_modules = ['graphgen']
+	py_modules = ['graphgen'],
+	keywords="graph generation library",
+	classifiers=[
+		"Development Status :: 3 - Alpha",
+		"Natural Language :: English",
+		"Operating System :: OS Independent",
+		"Programming Language :: Python :: 2",
+		"License :: OSI Approved :: Apache Software License",
+	]
 )
