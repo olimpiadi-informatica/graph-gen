@@ -1,80 +1,25 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+#
+# graph-gen - https://github.com/wil93/graph-gen
+# Copyright (c) 2011-2012 Giorgio Audrito
+# Copyright (c) 2014 William Di Luigi <williamdiluigi@gmail.com>
+# Copyright (c) 2014 Gabriele Farina <gabr.farina@gmail.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Libreria di funzioni sui grafi.
-#
-# classe astratta graph, derivate ugraph (grafo non diretto) e dgraph
-# (grafo diretto).
-#
-# costruttore:
-#    graph(G[,w])
-#        grafo copia di G
-#    graph(N[,w])
-#        grafo vuoto con N nodi
-#    graph(N,E[,w])
-#        grafo con lista di archi assegnata
-#    graph(N,[M=...],type='graph_type')
-#        grafo di tipo graph_type con N nodi, se type = 'forest' allora
-#        M=numero di archi.
-#
-# print:
-#    stampa in formato olimpico randomizzando l'ordine degli archi.
-#    se w era stato specificato, aggiunge dei pesi a ogni arco
-#    ottenendoli tramite w().
-#
-# confronti:
-#    i grafi si confrontano con le relazioni insiemistiche sugli archi
-#    (sottoinsieme...).
-#
-# container:
-#    l'iterazione su un oggetto graph e' sulla lista ordinata dei suoi
-#    archi.
-#
-# operazioni tra grafi:
-#    +    unione disgiunta (o aggiunta di un arco)
-#    *    prodotto cartesiano
-#    &    intersezione
-#    |    unione
-#    ~    complementare
-#    -    trasposto (solo grafi diretti)
-#
-# funzioni random:
-#    shuffle()
-#        permuta i label dei nodi del grafo
-#    connect()
-#        aggiunge il minimo numero di archi necessario per connettere il
-#        grafo
-#    addedges(K, [candidates])
-#        aggiunge K archi random (tra i candidates, oggetto edgerange)
-#
-# varie:
-#    N()
-#        quantita' di nodi
-#    M()
-#        quantita' di archi
-#    add(e)
-#        aggiunge un arco
-#    discard(e)
-#        rimuove un arco
-#
-#
-# classe edgerange
-#
-# rappresenta un range di archi.
-# instanziazione:
-#
-#   edgerange(g,[0,3],[3,6])
-#       tutti gli archi da 0,1,2 a 3,4,5
-#   edgerange(g,[[[0,3],[3,6]],[[6,7],[1,5]]])
-#       come prima piu' quelli da 6 a 1,2,3,4
-#   edgerange(g,[0,3],[3,6]) + edgerange([6,7],[1,5])
-#       come prima
-#
-# utilizzo:
-#
-#   r = edgerange(...)
-#   for i in edgerange(...)
-#   if  e in edgerange(...)
-#   temp = r[i] (sconsigliato)
+
+""" Libreria di funzioni sui grafi."""
 
 from random import sample, shuffle, choice, randint as _randint
 from math import sqrt
@@ -111,12 +56,68 @@ def lsample(N, M, Pop = []):
 
 
 class graph:
-    """Implementa il concetto di grafo allo scopo di generare grafi pseudo-casuali con proprieta' fissate.
+    """
+    Classe astratta graph, viene subclassata da ugraph (grafo non diretto)
+    e da dgraph (grafo diretto).
+
+    costruttore:
+       graph(G[,w])
+           grafo copia di G
+       graph(N[,w])
+           grafo vuoto con N nodi
+       graph(N,E[,w])
+           grafo con lista di archi assegnata
+       graph(N,[M=...],type='graph_type')
+           grafo di tipo graph_type con N nodi, se type = 'forest' allora
+           M=numero di archi.
+
+    print:
+       stampa in formato olimpico randomizzando l'ordine degli archi.
+       se w era stato specificato, aggiunge dei pesi a ogni arco
+       ottenendoli tramite w().
+
+    confronti:
+       i grafi si confrontano con le relazioni insiemistiche sugli archi
+       (sottoinsieme...).
+
+    container:
+       l'iterazione su un oggetto graph e' sulla lista ordinata dei suoi
+       archi.
+
+    operazioni tra grafi:
+       +    unione disgiunta (o aggiunta di un arco)
+       *    prodotto cartesiano
+       &    intersezione
+       |    unione
+       ~    complementare
+       -    trasposto (solo grafi diretti)
+
+    funzioni random:
+       shuffle()
+           permuta i label dei nodi del grafo
+       connect()
+           aggiunge il minimo numero di archi necessario per connettere il
+           grafo
+       addedges(K, [candidates])
+           aggiunge K archi random (tra i candidates, oggetto edgerange)
+
+    varie:
+       N()
+           quantita' di nodi
+       M()
+           quantita' di archi
+       add(e)
+           aggiunge un arco
+       discard(e)
+           rimuove un arco
+
+    Implementa il concetto di grafo allo scopo di generare grafi pseudo-casuali con proprieta' fissate.
     Il grafo viene rappresentato come insieme ordinato di archi.
 
     Il costruttore consente di creare un qualsiasi tipo speciale noto di grafi, le usuali operazioni aritmetiche consentono di effettuare analoghe operazioni combinatoriali, mentre le usuali operazioni logiche consentono di effettuare le analoghe operazioni insiemistiche.
 
     E' inoltre possibile aggiungere archi a caso (con il metodo addedges) o aggiungere archi in modo da connettere il grafo (con il metodo connect)."""
+
     # costruttore
     def __init__(self, N=0, E=None, M=None, w=None, type=None):
         """Costruisce un grafo vuoto con N vertici, e insieme di archi E (se specificato).
@@ -181,7 +182,7 @@ class graph:
         return s.rstrip()
     def printedges(self, zero_based = False):
         """Rappresentazione olimpica del grafo, senza la prima riga."""
-                s = ""
+        s = ""
         Ed = list(self.E)
         shuffle(Ed)
         for e in Ed:
@@ -364,20 +365,20 @@ class graph:
             rnk[lx] += rnk[ly]
         for e in self:
             union(e[0],e[1])
-                comp = [ [] for i in range(self.N())]
-                for i in range(self.N()):
-                    comp[lbl[i]].append(i)
-                comp = filter(lambda x: len(x) > 0, comp)
-                shuffle(comp)
-                kcomp = [ len(i) for i in comp ]
-                for i in range(1,len(kcomp)):
-                    kcomp[i] += kcomp[i-1]
-                for i in range(1,len(comp)):
-                    a = randint(kcomp[i-1])
-                    a = bisect_right(kcomp, a) # upper bound
-                    a = choice(comp[a])
-                    b = choice(comp[i])
-                    self.add((a,b))
+            comp = [ [] for i in range(self.N())]
+            for i in range(self.N()):
+                comp[lbl[i]].append(i)
+            comp = filter(lambda x: len(x) > 0, comp)
+            shuffle(comp)
+            kcomp = [ len(i) for i in comp ]
+            for i in range(1,len(kcomp)):
+                kcomp[i] += kcomp[i-1]
+            for i in range(1,len(comp)):
+                a = randint(kcomp[i-1])
+                a = bisect_right(kcomp, a) # upper bound
+                a = choice(comp[a])
+                b = choice(comp[i])
+                self.add((a,b))
     # permuta i nodi del grafo
     def shuffle(self):
         """Permuta casualmente i nodi del grafo tra di loro."""
@@ -470,7 +471,7 @@ class dag(graph):
         return s.rstrip()
     def printedges(self):
         """Rappresentazione olimpica del grafo, senza la prima riga."""
-                s = ""
+        s = ""
         Ed = list(self.E)
         shuffle(Ed)
         for e in Ed:
@@ -491,17 +492,38 @@ class dag(graph):
 
 
 class edgerange:
-    """Range immutabile di archi, tra blocchi contigui di nodi ad altri blocchi contigui di nodi.
+    """ edgerange
+
+    Range immutabile di archi, tra blocchi contigui di nodi ad altri blocchi contigui di nodi.
     I blocchi sorgente e destinazione di un range non si possono overlappare.
     E' possibile concatenare diversi range a patto che gli archi di un range siano tutti maggiori di quelli del range precedente.
 
     L'oggetto non crea fisicamente il range, consentendo un utilizzo efficiente anche con range particolarmente grandi.
 
-    Utilizzo tipico:
+    rappresenta un range di archi.
+    
+    instanziazione:
+
+    edgerange(g,[0,3],[3,6])
+        tutti gli archi da 0,1,2 a 3,4,5
+    edgerange(g,[[[0,3],[3,6]],[[6,7],[1,5]]])
+        come prima piu' quelli da 6 a 1,2,3,4
+    edgerange(g,[0,3],[3,6]) + edgerange([6,7],[1,5])
+        come prima
+
+    utilizzo:
+
+    r = edgerange(...)
+    for i in edgerange(...)
+    if  e in edgerange(...)
+    temp = r[i] (sconsigliato)
+    
     for e in edgerange(g,[0,3],[1,5]) + edgerange([6,7],[1,5]):
     ...
-    g.addedges(3,edgerange(g,[0,3],[1,5]))"""
-    # costruttore
+    g.addedges(3,edgerange(g,[0,3],[1,5]))
+    """
+
+        # costruttore
     def __init__(self, edge_type, ran, rdest = None):
         """Costruisce un oggetto edgerange, con archi come in un grafo edge_type."""
         if not isinstance(edge_type,graph):
