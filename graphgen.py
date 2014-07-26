@@ -43,16 +43,16 @@ def lsample(N, M, Pop = []):
     l.sort()
     for i in xrange(M):
         l[i] += i
-        if len(Pop) == 0:
-            return l
-        i = j = 0
-        while j < M:
-            if Pop[i] > l[j]+i:
-                l[j] += i
-                j+=1
-            else:
-                i+=1
-        return Pop + l
+    if len(Pop) == 0:
+        return l
+    i = j = 0
+    while j < M:
+        if Pop[i] > l[j]+i:
+            l[j] += i
+            j+=1
+        else:
+            i+=1
+    return Pop + l
 
 
 class graph:
@@ -155,13 +155,13 @@ class graph:
                 for i in xrange(N-1):
                     for j in xrange(i+1,N):
                         E.add(self.cod([i,j]))
-                        if type is 'star':
-                            for i in xrange(1,N):
-                                E.add(self.cod([0,i]))
-                        if type is 'wheel':
-                            for i in xrange(1,N):
-                                E.add(self.cod([0,i]))
-                                E.add(self.cod([i,(i+1)%N]))
+            if type is 'star':
+                for i in xrange(1,N):
+                    E.add(self.cod([0,i]))
+            if type is 'wheel':
+                for i in xrange(1,N):
+                    E.add(self.cod([0,i]))
+                    E.add(self.cod([i,(i+1)%N]))
         # eventualmente aggiungere: gear, caterpillar/lobster, BIPARTITE
         self.E = sortedset(E)
     # funzioni di stampa
@@ -365,20 +365,20 @@ class graph:
             rnk[lx] += rnk[ly]
         for e in self:
             union(e[0],e[1])
-            comp = [ [] for i in range(self.N())]
-            for i in range(self.N()):
-                comp[lbl[i]].append(i)
-            comp = filter(lambda x: len(x) > 0, comp)
-            shuffle(comp)
-            kcomp = [ len(i) for i in comp ]
-            for i in range(1,len(kcomp)):
-                kcomp[i] += kcomp[i-1]
-            for i in range(1,len(comp)):
-                a = randint(kcomp[i-1])
-                a = bisect_right(kcomp, a) # upper bound
-                a = choice(comp[a])
-                b = choice(comp[i])
-                self.add((a,b))
+        comp = [ [] for i in range(self.N())]
+        for i in range(self.N()):
+            comp[lbl[i]].append(i)
+        comp = filter(lambda x: len(x) > 0, comp)
+        shuffle(comp)
+        kcomp = [ len(i) for i in comp ]
+        for i in range(1,len(kcomp)):
+            kcomp[i] += kcomp[i-1]
+        for i in range(1,len(comp)):
+            a = randint(kcomp[i-1])
+            a = bisect_right(kcomp, a) # upper bound
+            a = choice(comp[a])
+            b = choice(comp[i])
+            self.add((a,b))
     # permuta i nodi del grafo
     def shuffle(self):
         """Permuta casualmente i nodi del grafo tra di loro."""
@@ -523,7 +523,7 @@ class edgerange:
     g.addedges(3,edgerange(g,[0,3],[1,5]))
     """
 
-        # costruttore
+    # costruttore
     def __init__(self, edge_type, ran, rdest = None):
         """Costruisce un oggetto edgerange, con archi come in un grafo edge_type."""
         if not isinstance(edge_type,graph):
