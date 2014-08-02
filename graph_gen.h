@@ -29,8 +29,25 @@ class too_many_samples: public exception {
     }
 };
 
-int randint(int limit) {
-    return rand() % limit;
+class invalid_weightGen: public exception {
+    virtual const char* what() const throw() {
+        return "You didn't call Graph.set_max_weight()!";
+    }
+};
+
+template<typename T1, typename T2>
+auto randrange(T1 bottom, T2 top) -> decltype(bottom+top) {
+    return double(rand())/RAND_MAX * (top - bottom) + bottom;
+}
+
+template<>
+int randrange(int bottom, int top) {
+    return rand() % (top - bottom) + bottom;
+}
+
+template<>
+long unsigned int randrange(int bottom, long unsigned int top) {
+    return rand() % (top - bottom) + bottom;
 }
 
 class IntLabels {
@@ -82,6 +99,32 @@ public:
     }
 };
 
+template<typename T>
+class RandomWeights {
+private:
+    T max_weight;
+    T min_weight;
+public:
+    typedef T weight_type;
+    RandomWeights(): max_weight(0), min_weight(0) {}
+    bool is_sane() {return max_weight > 0;}
+    void set_weight_range(T min, T max) {
+        max_weight = max;
+        min_weight = min;
+    }
+    void print(int a, int b) {
+        cout << " " << randrange(min_weight, max_weight);
+    }
+};
+
+class NoWeights {
+public:
+    typedef int weight_type;
+    bool is_sane() {return true;}
+    void set_weight_range(int, int) {}
+    void print(int a, int b) {}
+};
+
 class linear_sample {
 private:
     vector<int> sval;
@@ -91,7 +134,7 @@ public:
         if(max - num - excl.size() < 1) throw too_many_samples();
         sval.resize(num);
         for(int i=0; i<num; i++)
-            sval[i] = randint(max - num - excl.size());
+            sval[i] = randrange(0, max - num - excl.size());
         sort(sval.begin(), sval.end());
         int j = 0;
         for(int i=0; i<num; i++) {
@@ -110,11 +153,13 @@ public:
     }
 };
 
-template<typename T>
+template<typename T1, typename T2 = NoWeights>
 class Graph {
 private:
-    T labelGen;
+    T1 labelGen;
+    T2 weightGen;
     unordered_set<int>* adjList;
+    typedef typename T2::weight_type weight_type;
 public:
     template<typename... Args>
     Graph(Args... params): labelGen(params...) {
@@ -133,13 +178,18 @@ public:
     void build_forest(int M) {
         if(M > labelGen.size()-1) throw too_many_edges();
         for(auto v: linear_sample(M, labelGen.size())) {
-            int s = randint(v+1);
+            int s = randrange(0, v+1);
             add_edge(s, v+1);
             add_edge(v+1, s);
         }
     }
 
+    void set_weight_range(weight_type bottom, weight_type top) {
+        weightGen.set_weight_range(bottom, top);
+    }
+
     void print_undirected() {
+        if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i])
@@ -150,7 +200,9 @@ public:
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
                 if(i <= oth) continue;
-                cout << labelGen.get(i) << " " << labelGen.get(oth) << endl;
+                cout << labelGen.get(i) << " " << labelGen.get(oth);
+                weightGen.print(i, oth);
+                cout << endl;
             }
     }
 };
