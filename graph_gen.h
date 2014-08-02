@@ -35,6 +35,12 @@ class invalid_weightGen: public exception {
     }
 };
 
+class not_implemented: public exception {
+    virtual const char* what() const throw() {
+        return "This function is not implemented yet!";
+    }
+};
+
 template<typename T1, typename T2>
 auto randrange(T1 bottom, T2 top) -> decltype(bottom+top) {
     return double(rand())/RAND_MAX * (top - bottom) + bottom;
@@ -192,6 +198,39 @@ public:
     }
 
     virtual void print() = 0;
+
+    virtual void connect() = 0;
+};
+
+class DSU {
+private:
+    int* parent;
+    int* rank;
+    int N;
+public:
+    DSU(int N): N(N) {
+        parent = new int[N];
+        rank = new int[N];
+        for(int i=0; i<N; i++) parent[i] = i;
+    }
+
+    ~DSU() {
+        delete[] parent;
+        delete[] rank;
+    }
+
+    int find(int a) {
+        if(parent[a] == a) return a;
+        return parent[a] = find(parent[a]);
+    }
+
+    void merge(int a, int b) {
+        int va = find(a);
+        int vb = find(b);
+        if(rank[va] < rank[vb]) swap(va, vb);
+        parent[vb] = va;
+        rank[va] += rank[vb];
+    }
 };
 
 template<typename T1, typename T2 = NoWeights>
@@ -225,6 +264,24 @@ public:
                 cout << endl;
             }
     }
+
+    virtual void connect() {
+        int N = labelGen.size();
+        DSU d(N);
+        for(int i=0; i<N; i++)
+            for(auto x: adjList[i])
+                d.merge(i, x);
+        // TODO (?): randomize the order of the vertexes
+        vector<int> conncomp = {0};
+        for(int i=0; i<N; i++)
+            if(d.find(0) != d.find(i)) {
+                conncomp.push_back(i);
+                d.merge(0, i);
+            }
+        random_shuffle(conncomp.begin(), conncomp.end());
+        for(unsigned i=1; i<conncomp.size(); i++)
+            add_edge(conncomp[randrange(0, i)], conncomp[i]);
+    }
 };
 
 template<typename T1, typename T2 = NoWeights>
@@ -253,5 +310,10 @@ public:
                 weightGen.print(i, oth);
                 cout << endl;
             }
+    }
+
+    virtual void connect() {
+        // TODO: implement this. (tarjan?)
+        throw not_implemented();
     }
 };
