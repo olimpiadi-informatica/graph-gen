@@ -134,7 +134,7 @@ public:
     static const bool has_weight = false;
     bool is_sane() const {return true;}
     void set_weight_range(int, int) {}
-    int print(int a, int b) const {return -1;}
+    int print(int, int) const {return -1;}
 };
 
 class linear_sample {
@@ -143,7 +143,7 @@ private:
 public:
     // we assume -1 < excl[0] < excl[1] < ... < excl[N-1] < max
     linear_sample(int num, int max, const vector<int>& excl = vector<int>()) {
-        if(max - num - excl.size() < 0) throw too_many_samples();
+        if((unsigned) max < num + excl.size()) throw too_many_samples();
         sval.resize(num);
         for(int i=0; i<num; i++)
             sval[i] = randrange(0, max - num - excl.size() + 1);
@@ -348,8 +348,8 @@ public:
     virtual void add_random_edges(int M) {
         add_random_edges(M,
                          [](int n) {return n;},
-                         [](int n, int dst) {return dst;},
-                         [](int n, int cod) {return cod;});
+                         [](int, int dst) {return dst;},
+                         [](int, int cod) {return cod;});
     }
 };
 
