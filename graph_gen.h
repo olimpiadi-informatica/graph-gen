@@ -99,6 +99,8 @@ public:
     }
 };
 
+// TODO (?) Euclidean weights generator
+
 template<typename T>
 class RandomWeights {
 private:
@@ -155,7 +157,7 @@ public:
 
 template<typename T1, typename T2 = NoWeights>
 class Graph {
-private:
+protected:
     T1 labelGen;
     T2 weightGen;
     unordered_set<int>* adjList;
@@ -171,24 +173,42 @@ public:
         delete[] adjList;
     }
 
-    void add_edge(int a, int b) {
-        adjList[a].insert(b);
-    }
+    virtual void add_edge(int a, int b) = 0;
 
     void build_forest(int M) {
         if(M > labelGen.size()-1) throw too_many_edges();
         for(auto v: linear_sample(M, labelGen.size())) {
-            int s = randrange(0, v+1);
-            add_edge(s, v+1);
-            add_edge(v+1, s);
+            add_edge(randrange(0, v+1), v+1);
         }
+    }
+
+    void build_path() {
+        for(unsigned i=0; i<labelGen.size()-1; i++)
+            add_edge(i, i+1);
     }
 
     void set_weight_range(weight_type bottom, weight_type top) {
         weightGen.set_weight_range(bottom, top);
     }
 
-    void print_undirected() {
+    virtual void print() = 0;
+};
+
+template<typename T1, typename T2 = NoWeights>
+class UndirectedGraph: public Graph<T1, T2> {
+private:
+    using Graph<T1, T2>::adjList;
+    using Graph<T1, T2>::labelGen;
+    using Graph<T1, T2>::weightGen;
+public:
+    using Graph<T1, T2>::Graph;
+
+    virtual void add_edge(int a, int b) {
+        adjList[a].insert(b);
+        adjList[b].insert(a);
+    }
+
+    virtual void print() {
         if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
         for(unsigned i=0; i<labelGen.size(); i++)
@@ -200,6 +220,35 @@ public:
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
                 if(i <= oth) continue;
+                cout << labelGen.get(i) << " " << labelGen.get(oth);
+                weightGen.print(i, oth);
+                cout << endl;
+            }
+    }
+};
+
+template<typename T1, typename T2 = NoWeights>
+class DirectedGraph: public Graph<T1, T2> {
+private:
+    using Graph<T1, T2>::adjList;
+    using Graph<T1, T2>::labelGen;
+    using Graph<T1, T2>::weightGen;
+public:
+    using Graph<T1, T2>::Graph;
+
+    virtual void add_edge(int a, int b) {
+        adjList[a].insert(b);
+    }
+
+    virtual void print() {
+        if(!weightGen.is_sane()) throw invalid_weightGen();
+        int nedg = 0;
+        for(unsigned i=0; i<labelGen.size(); i++)
+            nedg += adjList[i].size();
+
+        cout << labelGen.size() << " " << nedg << endl;
+        for(unsigned i=0; i<labelGen.size(); i++)
+            for(auto oth: adjList[i]) {
                 cout << labelGen.get(i) << " " << labelGen.get(oth);
                 weightGen.print(i, oth);
                 cout << endl;

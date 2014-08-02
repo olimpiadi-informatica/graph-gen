@@ -1,8 +1,8 @@
 #include "graph_gen.h"
 
 int main(){
-    Graph<IntLabels, RandomWeights<int>> g(100);
-    g.build_forest(95);
+    UndirectedGraph<IntLabels, RandomWeights<int>> g(100);
+    g.build_path();
     g.set_weight_range(1, 20);
-    g.print_undirected();
+    g.print();
 }
