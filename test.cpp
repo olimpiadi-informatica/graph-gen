@@ -1,4 +1,4 @@
-#include "graph_gen.h"
+#include "graph_gen.hpp"
 
 int main(){
     UndirectedGraph<RandomIntLabels> g(100000);
