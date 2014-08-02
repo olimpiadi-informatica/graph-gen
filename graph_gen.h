@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <exception>
 #include <iostream>
+#include <functional>
 using namespace std;
 
 class too_many_edges: public exception {
@@ -139,17 +140,16 @@ private:
 public:
     // we assume -1 < excl[0] < excl[1] < ... < excl[N-1] < max
     linear_sample(int num, int max, const vector<int>& excl = vector<int>()) {
-        if(max - num - excl.size() < 1) throw too_many_samples();
+        if(max - num - excl.size() < 0) throw too_many_samples();
         sval.resize(num);
         for(int i=0; i<num; i++)
-            sval[i] = randrange(0, max - num - excl.size());
+            sval[i] = randrange(0, max - num - excl.size() + 1);
         sort(sval.begin(), sval.end());
         int j = 0;
         for(int i=0; i<num; i++) {
-            if(j < (int) excl.size() && excl[j] == sval[i] + i + j) j++;
+            while(j < (int) excl.size() && excl[j] <= sval[i] + i + j) j++;
             sval[i] += i + j;
         }
-
     }
 
     vector<int>::iterator begin() {
@@ -168,6 +168,28 @@ protected:
     T2 weightGen;
     unordered_set<int>* adjList;
     typedef typename T2::weight_type weight_type;
+
+    void add_random_edges(int M,
+                          function<int(int)> naval,
+                          function<int(int, int)> encd,
+                          function<int(int, int)> dest) {
+        vector<int> limits = {0};
+        for(unsigned i=0; i<labelGen.size(); i++)
+            limits.push_back(naval(i) + *limits.rbegin());
+        vector<int> excl;
+        for(unsigned i=0; i<labelGen.size(); i++)
+            for(auto d: adjList[i]) {
+                int cod = encd(i, d) + limits[i];
+                if(cod < limits[i+1])
+                    excl.push_back(cod);
+            }
+        sort(excl.begin(), excl.end());
+        int curn = 0;
+        for(auto l: linear_sample(M, *limits.rbegin(), excl)) {
+            while(l >= limits[curn+1]) curn++;
+            add_edge(curn, dest(curn, l - limits[curn]));
+        }
+    }
 public:
     template<typename... Args>
     Graph(Args... params): labelGen(params...) {
@@ -183,7 +205,7 @@ public:
 
     void build_forest(int M) {
         if(M > labelGen.size()-1) throw too_many_edges();
-        for(auto v: linear_sample(M, labelGen.size())) {
+        for(auto v: linear_sample(M, labelGen.size()-1)) {
             add_edge(randrange(0, v+1), v+1);
         }
     }
@@ -229,6 +251,8 @@ public:
     virtual void print() = 0;
 
     virtual void connect() = 0;
+
+    virtual void add_random_edges(int M) = 0;
 };
 
 class DSU {
@@ -268,6 +292,7 @@ private:
     using Graph<T1, T2>::adjList;
     using Graph<T1, T2>::labelGen;
     using Graph<T1, T2>::weightGen;
+    using Graph<T1, T2>::add_random_edges;
 public:
     using Graph<T1, T2>::Graph;
 
@@ -311,6 +336,13 @@ public:
         for(unsigned i=1; i<conncomp.size(); i++)
             add_edge(conncomp[randrange(0, i)], conncomp[i]);
     }
+
+    virtual void add_random_edges(int M) {
+        add_random_edges(M,
+                         [](int n) {return n;},
+                         [](int n, int dst) {return dst;},
+                         [](int n, int cod) {return cod;});
+    }
 };
 
 template<typename T1, typename T2 = NoWeights>
@@ -319,6 +351,7 @@ private:
     using Graph<T1, T2>::adjList;
     using Graph<T1, T2>::labelGen;
     using Graph<T1, T2>::weightGen;
+    using Graph<T1, T2>::add_random_edges;
 public:
     using Graph<T1, T2>::Graph;
 
@@ -339,6 +372,13 @@ public:
                 weightGen.print(i, oth);
                 cout << endl;
             }
+    }
+
+    virtual void add_random_edges(int M) {
+        add_random_edges(M,
+                         [&](int n) {return labelGen.size()-1;},
+                         [](int n, int dst) {return dst - (dst>n);},
+                         [](int n, int cod) {return cod + (cod>=n);});
     }
 
     virtual void connect() {
