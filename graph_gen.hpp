@@ -45,7 +45,7 @@ class not_implemented: public exception {
 
 template<typename T1, typename T2>
 auto randrange(T1 bottom, T2 top) -> decltype(bottom+top) {
-    return double(rand())/RAND_MAX * (top - bottom) + bottom;
+    return double(rand()) / RAND_MAX * (top - bottom) + bottom;
 }
 
 template<>
@@ -54,7 +54,7 @@ int randrange(int bottom, int top) {
 }
 
 template<>
-long unsigned int randrange(int bottom, long unsigned int top) {
+size_t randrange(int bottom, size_t top) {
     return rand() % (top - bottom) + bottom;
 }
 
@@ -67,7 +67,7 @@ public:
         for(int i=0; i<num; i++)
             labels[i] = i+start;
     }
-    unsigned size() const {
+    size_t size() const {
         return labels.size();
     }
     int get(int i) const {
@@ -85,7 +85,7 @@ public:
             labels[i] = i+start;
         random_shuffle(labels.begin(), labels.end());
     }
-    unsigned size() const {
+    size_t size() const {
         return labels.size();
     }
     int get(int i) const {
@@ -99,7 +99,7 @@ private:
     vector<T>& vec;
 public:
     VectorLabels(vector<T>& v): vec(v) {}
-    unsigned size() const {
+    size_t size() const {
         return vec.size();
     }
     T get(int i) const {
@@ -142,8 +142,8 @@ private:
     vector<int> sval;
 public:
     // we assume -1 < excl[0] < excl[1] < ... < excl[N-1] < max
-    linear_sample(int num, int max, const vector<int>& excl = vector<int>()) {
-        if((unsigned) max < num + excl.size()) throw too_many_samples();
+    linear_sample(int num, size_t max, const vector<int>& excl = vector<int>()) {
+        if(max < num + excl.size()) throw too_many_samples();
         sval.resize(num);
         for(int i=0; i<num; i++)
             sval[i] = randrange(0, max - num - excl.size() + 1);
@@ -169,7 +169,7 @@ class Graph {
 protected:
     T1 labelGen;
     T2 weightGen;
-    unordered_set<int>* adjList;
+    unordered_set<unsigned>* adjList;
     typedef typename T2::weight_type weight_type;
 
     void add_random_edges(int M,
@@ -177,10 +177,10 @@ protected:
                           function<int(int, int)> encd,
                           function<int(int, int)> dest) {
         vector<int> limits = {0};
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             limits.push_back(naval(i) + *limits.rbegin());
         vector<int> excl;
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             for(auto d: adjList[i]) {
                 int cod = encd(i, d) + limits[i];
                 if(cod < limits[i+1])
@@ -197,7 +197,7 @@ public:
     template<typename... Args>
     Graph(Args... params): labelGen(params...) {
         if(labelGen.size() == 0) throw too_few_nodes();
-        adjList = new unordered_set<int>[labelGen.size()];
+        adjList = new unordered_set<unsigned>[labelGen.size()];
     }
 
     ~Graph() {
@@ -214,12 +214,12 @@ public:
     }
 
     void build_path() {
-        for(unsigned i=0; i<labelGen.size()-1; i++)
+        for(size_t i=0; i<labelGen.size()-1; i++)
             add_edge(i, i+1);
     }
 
     void build_cycle() {
-        for(unsigned i=0; i<labelGen.size()-1; i++)
+        for(size_t i=0; i<labelGen.size()-1; i++)
             add_edge(i, i+1);
         add_edge(labelGen.size()-1, 0);
     }
@@ -229,12 +229,12 @@ public:
     }
 
     void build_star() {
-        for(unsigned i=1; i<labelGen.size(); i++)
+        for(size_t i=1; i<labelGen.size(); i++)
             add_edge(0, i);
     }
 
     void build_wheel() {
-        for(unsigned i=1; i<labelGen.size(); i++) {
+        for(size_t i=1; i<labelGen.size(); i++) {
             add_edge(i-1, i);
             add_edge(0, i);
         }
@@ -242,8 +242,8 @@ public:
     }
 
     void build_clique() {
-        for(unsigned i=0; i<labelGen.size(); i++)
-            for(unsigned j=i+1; j<labelGen.size(); j++)
+        for(size_t i=0; i<labelGen.size(); i++)
+            for(size_t j=i+1; j<labelGen.size(); j++)
                 add_edge(i, j);
     }
 
@@ -312,12 +312,12 @@ public:
         if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
         ostringstream oss;
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i])
                 if(i > oth)
                     nedg++;
         oss << labelGen.size() << " " << nedg << "\n";
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
                 if(i <= oth) continue;
                 oss << labelGen.get(i) << " " << labelGen.get(oth);
@@ -341,7 +341,7 @@ public:
                 d.merge(0, i);
             }
         random_shuffle(conncomp.begin(), conncomp.end());
-        for(unsigned i=1; i<conncomp.size(); i++)
+        for(size_t i=1; i<conncomp.size(); i++)
             add_edge(conncomp[randrange(0, i)], conncomp[i]);
     }
 
@@ -371,10 +371,10 @@ public:
         if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
         ostringstream oss;
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             nedg += adjList[i].size();
         oss << labelGen.size() << " " << nedg << "\n";
-        for(unsigned i=0; i<labelGen.size(); i++)
+        for(size_t i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
                 oss << labelGen.get(i) << " " << labelGen.get(oth);
                 if(T2::has_weight) oss << " " << weightGen.print(i, oth);
