@@ -4,6 +4,7 @@
 #include <exception>
 #include <iostream>
 #include <functional>
+#include <sstream>
 using namespace std;
 
 class too_many_edges: public exception {
@@ -66,10 +67,10 @@ public:
         for(int i=0; i<num; i++)
             labels[i] = i+start;
     }
-    unsigned size() {
+    unsigned size() const {
         return labels.size();
     }
-    int get(int i) {
+    int get(int i) const {
         return labels[i];
     }
 };
@@ -84,10 +85,10 @@ public:
             labels[i] = i+start;
         random_shuffle(labels.begin(), labels.end());
     }
-    unsigned size() {
+    unsigned size() const {
         return labels.size();
     }
-    int get(int i) {
+    int get(int i) const {
         return labels[i];
     }
 };
@@ -98,10 +99,10 @@ private:
     vector<T>& vec;
 public:
     VectorLabels(vector<T>& v): vec(v) {}
-    unsigned size() {
+    unsigned size() const {
         return vec.size();
     }
-    T get(int i) {
+    T get(int i) const {
         return vec[i];
     }
 };
@@ -115,23 +116,25 @@ private:
     T min_weight;
 public:
     typedef T weight_type;
+    static const bool has_weight = true;
     RandomWeights(): max_weight(0), min_weight(0) {}
-    bool is_sane() {return max_weight > 0;}
+    bool is_sane() const {return max_weight > 0;}
     void set_weight_range(T min, T max) {
         max_weight = max;
         min_weight = min;
     }
-    void print(int a, int b) {
-        cout << " " << randrange(min_weight, max_weight);
+    T print(int a, int b) const {
+        return randrange(min_weight, max_weight);
     }
 };
 
 class NoWeights {
 public:
     typedef int weight_type;
-    bool is_sane() {return true;}
+    static const bool has_weight = false;
+    bool is_sane() const {return true;}
     void set_weight_range(int, int) {}
-    void print(int a, int b) {}
+    int print(int a, int b) const {return -1;}
 };
 
 class linear_sample {
@@ -248,7 +251,11 @@ public:
         weightGen.set_weight_range(bottom, top);
     }
 
-    virtual void print() = 0;
+    friend ostream& operator<<(ostream& os, const Graph<T1, T2>& g) {
+        return os << g.to_string();
+    }
+
+    virtual string to_string() const = 0;
 
     virtual void connect() = 0;
 
@@ -301,22 +308,23 @@ public:
         adjList[b].insert(a);
     }
 
-    virtual void print() {
+    virtual string to_string() const {
         if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
+        ostringstream oss;
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i])
                 if(i > oth)
                     nedg++;
-
-        cout << labelGen.size() << " " << nedg << endl;
+        oss << labelGen.size() << " " << nedg << "\n";
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
                 if(i <= oth) continue;
-                cout << labelGen.get(i) << " " << labelGen.get(oth);
-                weightGen.print(i, oth);
-                cout << endl;
+                oss << labelGen.get(i) << " " << labelGen.get(oth);
+                if(T2::has_weight) oss << " " << weightGen.print(i, oth);
+                oss << "\n";
             }
+        return oss.str();
     }
 
     virtual void connect() {
@@ -359,19 +367,20 @@ public:
         adjList[a].insert(b);
     }
 
-    virtual void print() {
+    virtual string to_string() const {
         if(!weightGen.is_sane()) throw invalid_weightGen();
         int nedg = 0;
+        ostringstream oss;
         for(unsigned i=0; i<labelGen.size(); i++)
             nedg += adjList[i].size();
-
-        cout << labelGen.size() << " " << nedg << endl;
+        oss << labelGen.size() << " " << nedg << "\n";
         for(unsigned i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
-                cout << labelGen.get(i) << " " << labelGen.get(oth);
-                weightGen.print(i, oth);
-                cout << endl;
+                oss << labelGen.get(i) << " " << labelGen.get(oth);
+                if(T2::has_weight) oss << " " << weightGen.print(i, oth);
+                oss << "\n";
             }
+        return oss.str();
     }
 
     virtual void add_random_edges(int M) {
