@@ -1,5 +1,5 @@
 #include <vector>
-#include <unordered_set>
+#include <set>
 #include <algorithm>
 #include <exception>
 #include <iostream>
@@ -44,17 +44,16 @@ class not_implemented: public exception {
 };
 
 template<typename T1, typename T2>
-auto randrange(T1 bottom, T2 top) -> decltype(bottom+top) {
-    return double(rand()) / RAND_MAX * (top - bottom) + bottom;
+auto randrange(T1 bottom, T2 top)
+  -> typename enable_if<!is_integral<decltype(bottom+top)>::value,
+                        decltype(bottom+top)>::type {
+    return double(rand())/RAND_MAX * (top - bottom) + bottom;
 }
 
-template<>
-int randrange(int bottom, int top) {
-    return rand() % (top - bottom) + bottom;
-}
-
-template<>
-size_t randrange(int bottom, size_t top) {
+template<typename T1, typename T2>
+auto randrange(T1 bottom, T2 top)
+  -> typename enable_if<is_integral<decltype(bottom+top)>::value,
+                        decltype(bottom+top)>::type {
     return rand() % (top - bottom) + bottom;
 }
 
@@ -169,7 +168,7 @@ class Graph {
 protected:
     T1 labelGen;
     T2 weightGen;
-    unordered_set<unsigned>* adjList;
+    set<unsigned>* adjList;
     typedef typename T2::weight_type weight_type;
 
     void add_random_edges(int M,
@@ -186,18 +185,18 @@ protected:
                 if(cod < limits[i+1])
                     excl.push_back(cod);
             }
-        sort(excl.begin(), excl.end());
         int curn = 0;
         for(auto l: linear_sample(M, *limits.rbegin(), excl)) {
             while(l >= limits[curn+1]) curn++;
             add_edge(curn, dest(curn, l - limits[curn]));
         }
     }
+
 public:
     template<typename... Args>
     Graph(Args... params): labelGen(params...) {
         if(labelGen.size() == 0) throw too_few_nodes();
-        adjList = new unordered_set<unsigned>[labelGen.size()];
+        adjList = new set<unsigned>[labelGen.size()];
     }
 
     ~Graph() {
@@ -319,7 +318,7 @@ public:
         oss << labelGen.size() << " " << nedg << "\n";
         for(size_t i=0; i<labelGen.size(); i++)
             for(auto oth: adjList[i]) {
-                if(i <= oth) continue;
+                if(i <= oth) break;
                 oss << labelGen.get(i) << " " << labelGen.get(oth);
                 if(T2::has_weight) oss << " " << weightGen.print(i, oth);
                 oss << "\n";
