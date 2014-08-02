@@ -1,11 +1,12 @@
 #include <vector>
-#include <set>
 #include <algorithm>
 #include <exception>
 #include <iostream>
 #include <functional>
 #include <sstream>
+#include "cpp-btree/btree_set.h"
 using namespace std;
+using namespace btree;
 
 class too_many_edges: public exception {
     virtual const char* what() const throw() {
@@ -168,7 +169,7 @@ class Graph {
 protected:
     T1 labelGen;
     T2 weightGen;
-    set<unsigned>* adjList;
+    btree_set<unsigned>* adjList;
     typedef typename T2::weight_type weight_type;
 
     void add_random_edges(int M,
@@ -196,7 +197,7 @@ public:
     template<typename... Args>
     Graph(Args... params): labelGen(params...) {
         if(labelGen.size() == 0) throw too_few_nodes();
-        adjList = new set<unsigned>[labelGen.size()];
+        adjList = new btree_set<unsigned>[labelGen.size()];
     }
 
     ~Graph() {
