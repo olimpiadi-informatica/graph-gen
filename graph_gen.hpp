@@ -272,6 +272,7 @@ public:
         parent = new int[N];
         rank = new int[N];
         for(int i=0; i<N; i++) parent[i] = i;
+        for(int i=0; i<N; i++) rank[i] = 1;
     }
 
     ~DSU() {
