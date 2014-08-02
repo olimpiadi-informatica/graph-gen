@@ -193,6 +193,35 @@ public:
             add_edge(i, i+1);
     }
 
+    void build_cycle() {
+        for(unsigned i=0; i<labelGen.size()-1; i++)
+            add_edge(i, i+1);
+        add_edge(labelGen.size()-1, 0);
+    }
+
+    void build_tree() {
+        build_forest(labelGen.size()-1);
+    }
+
+    void build_star() {
+        for(unsigned i=1; i<labelGen.size(); i++)
+            add_edge(0, i);
+    }
+
+    void build_wheel() {
+        for(unsigned i=1; i<labelGen.size(); i++) {
+            add_edge(i-1, i);
+            add_edge(0, i);
+        }
+        add_edge(labelGen.size(), 0);
+    }
+
+    void build_clique() {
+        for(unsigned i=0; i<labelGen.size(); i++)
+            for(unsigned j=i+1; j<labelGen.size(); j++)
+                add_edge(i, j);
+    }
+
     void set_weight_range(weight_type bottom, weight_type top) {
         weightGen.set_weight_range(bottom, top);
     }
