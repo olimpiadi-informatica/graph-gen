@@ -86,8 +86,8 @@ static int LS_init(LinearSampleObj* self,
                          PyObject *args,
                          PyObject *kwds) {
     int num;
-    size_t max;
-    if(!PyArg_ParseTuple(args, "ik", &num, &max))
+    long int max;
+    if(!PyArg_ParseTuple(args, "il", &num, &max))
         return -1;
     if(self->ls) {
         // Someone who feels playful could call __init__() twice
