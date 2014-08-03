@@ -84,7 +84,13 @@ static int LS_init(LinearSampleObj* self,
         delete self->ls;
         self->ls = NULL;
     }
-    self->ls = new LinearSample(num, max);
+    try {
+        self->ls = new LinearSample(num, max);
+    }
+    catch(exception& e) {
+        PyErr_SetString(PyExc_ValueError, e.what());
+        return -1;
+    }
     return 0;
 }
 
