@@ -281,6 +281,10 @@ public:
         delete[] rank;
     }
 
+    int size() {
+        return N;
+    }
+
     int find(int a) {
         if(parent[a] == a) return a;
         return parent[a] = find(parent[a]);
