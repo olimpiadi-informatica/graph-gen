@@ -18,7 +18,11 @@
 # limitations under the License.
 
 
-from distutils.core import setup
+from distutils.core import setup, Extension
+
+
+module = Extension('graphgen', sources = ['graphgen.cpp'])
+module.extra_compile_args = ['--std=c++11'];
 
 setup(
 	name = 'graph-gen',
@@ -27,8 +31,9 @@ setup(
 	author = 'Giorgio Audrito, William Di Luigi, Gabriele Farina, Luca Versari',
 	author_email = 'giorgio.audrito@gmail.com, williamdiluigi@gmail.com, gabr.farina@gmail.com, veluca93@gmail.com',
 	url = 'https://github.com/wil93/graph-gen',
-	py_modules = ['graphgen'],
+	ext_modules = [module],
 	keywords="graph generation library",
+	data_files=[("/usr/include", ["graphgen.hpp"])],
 	classifiers=[
 		"Development Status :: 3 - Alpha",
 		"Natural Language :: English",

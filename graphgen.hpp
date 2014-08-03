@@ -137,12 +137,12 @@ public:
     int print(int, int) const {return -1;}
 };
 
-class linear_sample {
+class LinearSample {
 private:
     vector<int> sval;
 public:
     // we assume -1 < excl[0] < excl[1] < ... < excl[N-1] < max
-    linear_sample(int num, size_t max, const vector<int>& excl = vector<int>()) {
+    LinearSample(int num, size_t max, const vector<int>& excl = vector<int>()) {
         if(max < num + excl.size()) throw too_many_samples();
         sval.resize(num);
         for(int i=0; i<num; i++)
@@ -187,7 +187,7 @@ protected:
                     excl.push_back(cod);
             }
         int curn = 0;
-        for(auto l: linear_sample(M, *limits.rbegin(), excl)) {
+        for(auto l: LinearSample(M, *limits.rbegin(), excl)) {
             while(l >= limits[curn+1]) curn++;
             add_edge(curn, dest(curn, l - limits[curn]));
         }
@@ -208,7 +208,7 @@ public:
 
     void build_forest(int M) {
         if(M > labelGen.size()-1) throw too_many_edges();
-        for(auto v: linear_sample(M, labelGen.size()-1)) {
+        for(auto v: LinearSample(M, labelGen.size()-1)) {
             add_edge(randrange(0, v+1), v+1);
         }
     }
