@@ -1,6 +1,16 @@
 #include "Python.h"
 #include "graphgen.hpp"
 
+extern "C" {
+
+static PyObject * GG_srand(PyObject *self, PyObject *args) {
+    int s;
+    if(!PyArg_ParseTuple(args, "i", &s))
+        return NULL;
+    srand(s);
+    Py_RETURN_NONE;
+}
+
 typedef struct {
     PyObject_HEAD
     LinearSample* ls;
@@ -136,6 +146,7 @@ static PyTypeObject LinearSampleType = {
 };
 
 static PyMethodDef graphgen_methods[] = {
+    {"srand", (PyCFunction)GG_srand, METH_VARARGS, "Call srand()"},
     {NULL}  /* Sentinel */
 };
 
@@ -155,4 +166,6 @@ PyMODINIT_FUNC initgraphgen(void) {
     Py_INCREF(&LSIteratorType);
     PyModule_AddObject(m, "LinearSample", (PyObject *)&LinearSampleType);
     PyModule_AddObject(m, "LinearSampleIterator", (PyObject *)&LSIteratorType);
+}
+
 }

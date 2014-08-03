@@ -44,6 +44,7 @@ class not_implemented: public exception {
     }
 };
 
+
 template<typename T1, typename T2>
 auto randrange(T1 bottom, T2 top)
   -> typename enable_if<!is_integral<decltype(bottom+top)>::value,
