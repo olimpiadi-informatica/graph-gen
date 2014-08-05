@@ -1,8 +1,15 @@
 #include "graphgen.hpp"
 
 int main(){
-    UndirectedGraph<RandomIntLabels> g(100000);
+	RangeSampler sampler(10, 0, 100);
+	for (auto val: sampler)
+		std::cout << val << " ";
+	std::cout << std::endl;
+
+	IotaLabeler labeler;
+	NoWeighter weighter;
+    UndirectedGraph<int> g(100000, labeler, weighter);
     g.add_random_edges(100000);
     g.connect();
-    cout << g << endl;
+    std::cout << g << std::endl;
 }

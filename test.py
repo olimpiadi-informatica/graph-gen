@@ -3,16 +3,17 @@ import graphgen
 
 graphgen.srand(1)
 
-# testing LinearSample
-LS = graphgen.LinearSample(20, 100)
-for i in LS:
+# testing RangeSampler
+print "OK"
+RS = graphgen.RangeSampler(20, 0, 100)
+for i in RS:
     print i,
 print
 
 # testing DSU
-sets = graphgen.DSU(100)
+sets = graphgen.DisjointSet(100)
 last = 0
-for i in LS:
+for i in RS:
     sets.merge(last, i)
     last = i
 print " ".join(map(str, [sets.find(i) for i in xrange(100)]))
