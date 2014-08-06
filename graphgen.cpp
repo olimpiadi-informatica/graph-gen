@@ -7,7 +7,7 @@ extern "C" {
         int s;
         if (!PyArg_ParseTuple(args, "i", &s))
             return NULL;
-        srand(s);
+        Random::srand(s);
         Py_RETURN_NONE;
     }
 
@@ -614,6 +614,24 @@ extern "C" {
         Py_RETURN_NONE;
     }
 
+    static PyObject* DG_build_dag(
+        DGObj* self,
+        PyObject *args,
+        PyObject *kwds
+    ) {
+        int M;
+        if (!PyArg_ParseTuple(args, "i", &M))
+            return NULL;
+        try {
+            self->g->build_dag(M);
+        }
+        catch(std::exception& e) {
+            PyErr_SetString(PyExc_ValueError, e.what());
+            return NULL;
+        }
+        Py_RETURN_NONE;
+    }
+
     static PyObject* DG_connect(DGObj* self) {
         try {
             self->g->connect();
@@ -699,6 +717,8 @@ extern "C" {
         {"connect", (PyCFunction)DG_connect, METH_NOARGS,
          "Add the minimum number of edges to make the graph connected."},
         {"build_forest", (PyCFunction)DG_build_forest, METH_VARARGS,
+         "Creates a forest with the given number of edges."},
+        {"build_dag", (PyCFunction)DG_build_dag, METH_VARARGS,
          "Creates a forest with the given number of edges."},
         {"build_path", (PyCFunction)DG_build_path, METH_NOARGS,
          "Creates a path."},

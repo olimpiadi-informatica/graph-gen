@@ -65,6 +65,7 @@ namespace Random {
 
     void srand(int S) {
         w = S;
+        ::srand(S);
     }
 
     template<typename T1, typename T2>
@@ -84,14 +85,16 @@ namespace Random {
 
 namespace utils {
     template<typename T>
-    std::string print_weight(const Weighter<T>& weighter, const edge_t& edge) {
-        return std::to_string(weighter(edge));
+    void write_weight(
+        const Weighter<T>& weighter,
+        const edge_t& edge,
+        std::ostream& os
+    ) {
+        return os << " " << weighter(edge);
     };
 
     template<>
-    std::string print_weight(const Weighter<void>& weighter, const edge_t& edge) {
-        return std::string();
-    }
+    void write_weight(const Weighter<void>&, const edge_t&, std::ostream&) {}
 }
 
 /**
@@ -329,16 +332,19 @@ protected:
         const std::function<bool(const edge_t)> is_valid
     ) const {
         std::ostringstream oss;
-        oss << vertices_no << " " << adj_list.size()/2 << "\n";
-        for (edge_t e: adj_list) {
-            if (is_valid(e)) {
-                oss << labeler(e.tail) << " " << labeler(e.head);
-                if (!std::is_same<weight_t, void>()) {
-                    oss << " ";
-                    oss << utils::print_weight(weighter, {e.tail, e.head});
-                }
-                oss << "\n";
-            }
+        std::vector<edge_t> valid_edges;
+        std::copy_if(
+            adj_list.begin(),
+            adj_list.end(),
+            std::back_inserter(valid_edges),
+            is_valid
+        );
+        std::random_shuffle(valid_edges.begin(), valid_edges.end());
+        oss << vertices_no << " " << valid_edges.size() << "\n";
+        for (edge_t e: valid_edges) {
+            oss << labeler(e.tail) << " " << labeler(e.head);
+            utils::write_weight(weighter, e, oss);
+            oss << "\n";
         }
         return oss.str();
     }
@@ -477,7 +483,6 @@ public:
     }
 
     std::string to_string() const override {
-        // FIXME: Don't duplicate code
         auto is_valid = [](const edge_t e) -> bool {
             return e.tail > e.head;
         };
@@ -555,7 +560,6 @@ public:
     }
 
     std::string to_string() const override {
-        // FIXME: Don't duplicate code
         auto is_valid = [](const edge_t e) -> bool {
             return e.tail != e.head;
         };
@@ -582,6 +586,30 @@ public:
         add_random_edges(
             edges_no,
             vertices_no*(vertices_no-1),
+            is_valid,
+            edge_to_rank,
+            rank_to_edge
+        );
+    }
+
+    void build_dag(const size_t edges_no) {
+        auto is_valid = [](const edge_t e) -> bool {
+            return e.tail > e.head;
+        };
+
+        auto edge_to_rank = [](edge_t e) -> uint64_t {
+            return (uint64_t)e.tail*(e.tail+1)/2 + e.head;
+        };
+
+        auto rank_to_edge = [](uint64_t rank) -> edge_t {
+            edge_t e;
+            e.tail = round(sqrt(2*(rank+1)));
+            e.head = rank - e.tail*(e.tail-1)/2;
+            return e;
+        };
+        add_random_edges(
+            edges_no,
+            vertices_no*(vertices_no-1)/2,
             is_valid,
             edge_to_rank,
             rank_to_edge
