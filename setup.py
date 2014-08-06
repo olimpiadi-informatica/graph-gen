@@ -17,12 +17,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import os
+import glob
 from distutils.core import setup, Extension
 
 
 module = Extension('graphgen', sources = ['graphgen.cpp'])
 module.extra_compile_args = ['--std=c++11'];
+
+headers_path = os.path.join("include", "graphgen")
+
+headers = [(headers_path, ["graphgen.hpp"])]
+
+headers += [(os.path.join(headers_path, "cpp-btree"), glob.glob("cpp-btree/*h"))]
 
 setup(
 	name = 'graph-gen',
@@ -32,8 +39,8 @@ setup(
 	author_email = 'giorgio.audrito@gmail.com, williamdiluigi@gmail.com, gabr.farina@gmail.com, veluca93@gmail.com',
 	url = 'https://github.com/wil93/graph-gen',
 	ext_modules = [module],
-	keywords="graph generation library",
-	data_files=[("/usr/include", ["graphgen.hpp"])],
+	keywords = "graph generation library",
+	data_files = headers,
 	classifiers=[
 		"Development Status :: 3 - Alpha",
 		"Natural Language :: English",
