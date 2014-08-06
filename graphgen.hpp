@@ -432,9 +432,9 @@ private:
 public:
     DisjointSet(const size_t N): N(N) {
         parent = new size_t[N];
-        rank = new size_t[N];
+        rank = new size_t[N]();
         for (size_t i=0; i<N; i++)
-            parent[i] = i, rank[i] = 1;
+            parent[i] = i;
     }
 
     ~DisjointSet() {
@@ -451,14 +451,16 @@ public:
         return parent[a] = find(parent[a]);
     }
 
-    bool merge(const size_t a, size_t b) {
+    bool merge(const size_t a, const size_t b) {
         int va = find(a);
         int vb = find(b);
         if (va == vb) return false;
-        if (rank[va] < rank[vb])
-            std::swap(va, vb);
-        parent[vb] = va;
-        rank[va] += rank[vb];
+        if (rank[va] > rank[vb]) {
+            parent[vb] = va;
+        } else {
+            parent[va] = vb;
+            rank[vb] += (rank[va] == rank[vb]);
+        }
         return true;
     }
 };
