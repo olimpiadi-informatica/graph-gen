@@ -11,6 +11,9 @@
 typedef size_t vertex_t;
 typedef struct{vertex_t tail, head;} edge_t;
 
+template<typename T>
+class Weighter;
+
 bool operator<(const edge_t& a, const edge_t& b) {
     return a.tail < b.tail || (a.tail == b.tail && a.head < b.head);
 }
@@ -79,9 +82,21 @@ namespace Random {
     }
 }
 
+namespace utils {
+    template<typename T>
+    std::string print_weight(const Weighter<T>& weighter, const edge_t& edge) {
+        return std::to_string(weighter(edge));
+    };
+
+    template<>
+    std::string print_weight(const Weighter<void>& weighter, const edge_t& edge) {
+        return std::string();
+    }
+}
+
 /**
  *  Labeler is the abstract class that defines the interface for a
- *  graph labeler, i.e. a class that assigns labels to vertices.
+ *  graph labeler functor, i.e. a callable object that assigns labels to vertices.
  */
 template<typename T>
 class Labeler {
@@ -95,7 +110,7 @@ public:
      *  returns a label of type T for it. It must be a deterministic
      *  injective function.
      */
-    virtual T label(const vertex_t i) = 0;
+    virtual T operator()(const vertex_t i) = 0;
 };
 
 /**
@@ -110,7 +125,7 @@ public:
     IotaLabeler(int start = 0): start(start) {}
     ~IotaLabeler() {}
 
-    int label(const vertex_t i) override {
+    int operator()(const vertex_t i) override {
         return start + i;
     }
 };
@@ -133,7 +148,7 @@ public:
     }
     ~RandIntLabeler() {}
 
-    int label(const vertex_t i) {
+    int operator()(const vertex_t i) {
         return labels.at(i);
     }
 };
@@ -150,14 +165,14 @@ public:
     StaticLabeler(const std::vector<T>& labels): labels(labels) {}
     ~StaticLabeler() {}
 
-    T label(const vertex_t i) {
+    T operator()(const vertex_t i) {
         return labels.at(i);
     }
 };
 
 /**
  *  Weighter is the abstract class that defines the interface for a
- *  graph weighter, i.e. a class that assigns weights to edges.
+ *  graph weighter functor, i.e. a callable object that assigns weights to edges.
  */
 template<typename T>
 class Weighter {
@@ -167,11 +182,11 @@ public:
     virtual ~Weighter() {}
 
     /**
-     *  weight takes as arguments two vertex_t, corresponding to the tail and
+     *  takes as arguments two vertex_t, corresponding to the tail and
      *  the head vertices of the edge of interest, and returns a weight
      *  of type T for the edge. It must be a deterministic function.
      */
-    virtual T weight(const vertex_t tail, const vertex_t head) = 0;
+    virtual T operator()(const edge_t& edge) = 0;
 };
 
 // TODO (?) Euclidean weights generator
@@ -189,7 +204,7 @@ public:
     RandomWeighter(T min, T max): min(min), max(max) {};
     ~RandomWeighter() {};
 
-    T weight(const vertex_t tail, const vertex_t head) {
+    T operator()(const edge_t&) {
         return randrange(min, max);
     }
 };
@@ -201,7 +216,7 @@ class NoWeighter: public Weighter<void> {
 public:
     ~NoWeighter() {};
 
-    void weight(const vertex_t, const vertex_t) {
+    void operator()(const edge_t&) {
         // TODO: Define a proper exception
         throw NotImplementedException();
     }
@@ -228,7 +243,7 @@ public:
         const size_t sample_size,
         const int64_t min,
         const int64_t max,
-        std::vector<size_t> excl = std::vector<size_t>()
+        std::vector<int64_t> excl = std::vector<int64_t>()
     ) {
         if (!std::is_sorted(excl.begin(), excl.end()))
             std::sort(excl.begin(), excl.end());
@@ -247,7 +262,7 @@ public:
         size_t excl_idx = 0;
         for (size_t i = 0; i < sample_size; i++) {
             while (excl_idx < excl.size() &&
-                   excl[excl_idx] <= samples[i] + i + excl_idx)
+                   excl[excl_idx] <= samples[i] + int64_t(i + excl_idx))
                 excl_idx++;
             samples[i] += i + excl_idx;
         }
@@ -298,7 +313,7 @@ protected:
     ) {
         // We remove the existing edges from the range of edges that
         // RangeSampler will choose from.
-        std::vector<uint64_t> excluded_ranks;
+        std::vector<int64_t> excluded_ranks;
         for (edge_t e: adj_list)
             if (is_valid(e))
                 excluded_ranks.push_back(edge_to_rank(e));
@@ -308,6 +323,24 @@ protected:
         for (auto r: RangeSampler(edges_no, 0, max_edges, excluded_ranks)) {
             add_edge(rank_to_edge(r));
         }
+    }
+
+    std::string _to_string(
+        const std::function<bool(const edge_t)> is_valid
+    ) const {
+        std::ostringstream oss;
+        oss << vertices_no << " " << adj_list.size()/2 << "\n";
+        for (edge_t e: adj_list) {
+            if (is_valid(e)) {
+                oss << labeler(e.tail) << " " << labeler(e.head);
+                if (!std::is_same<weight_t, void>()) {
+                    oss << " ";
+                    oss << utils::print_weight(weighter, {e.tail, e.head});
+                }
+                oss << "\n";
+            }
+        }
+        return oss.str();
     }
 
 public:
@@ -433,33 +466,7 @@ private:
     using Graph<label_t, weight_t>::weighter;
     using Graph<label_t, weight_t>::add_random_edges;
     using Graph<label_t, weight_t>::vertices_no;
-
-    // For unweighted graphs
-    std::string to_string(std::true_type) const {
-        std::ostringstream oss;
-        oss << vertices_no << " " << adj_list.size()/2 << "\n";
-        for (edge_t e: adj_list) {
-            if (e.tail <= e.head)
-                continue;
-            oss << labeler.label(e.tail) << " " << labeler.label(e.head);
-            oss << "\n";
-        }
-        return oss.str();
-    }
-
-    // For weighted graphs
-    std::string to_string(std::false_type) const {
-        std::ostringstream oss;
-        oss << vertices_no << " " << adj_list.size()/2 << "\n";
-        for (edge_t e: adj_list) {
-            if (e.tail <= e.head)
-                continue;
-            oss << labeler.label(e.tail) << " " << labeler.label(e.head);
-            oss << " " << weighter.weight(e.tail, e.head);
-            oss << "\n";
-            }
-        return oss.str();
-    }
+    using Graph<label_t, weight_t>::_to_string;
 
 public:
     using Graph<label_t, weight_t>::Graph;
@@ -470,7 +477,12 @@ public:
     }
 
     std::string to_string() const override {
-        return to_string(std::is_same<weight_t, void>());
+        // FIXME: Don't duplicate code
+        auto is_valid = [](const edge_t e) -> bool {
+            return e.tail > e.head;
+        };
+
+        return _to_string(is_valid);
     }
 
     void connect() override {
@@ -532,29 +544,7 @@ private:
     using Graph<label_t, weight_t>::weighter;
     using Graph<label_t, weight_t>::add_random_edges;
     using Graph<label_t, weight_t>::vertices_no;
-
-    // For unweighted graphs
-    std::string to_string(std::true_type) const {
-        std::ostringstream oss;
-        oss << vertices_no << " " << adj_list.size() << "\n";
-        for (edge_t e: adj_list) {
-            oss << labeler.label(e.tail) << " " << labeler.label(e.head);
-            oss << "\n";
-        }
-        return oss.str();
-    }
-
-    // For weighted graphs
-    std::string to_string(std::false_type) const {
-        std::ostringstream oss;
-        oss << vertices_no << " " << adj_list.size() << "\n";
-        for (edge_t e: adj_list) {
-            oss << labeler.label(e.tail) << " " << labeler.label(e.head);
-            oss << " " << weighter.weight(e.tail, e.head);
-            oss << "\n";
-        }
-        return oss.str();
-    }
+    using Graph<label_t, weight_t>::_to_string;
 
 public:
     using Graph<label_t, weight_t>::Graph;
@@ -565,7 +555,12 @@ public:
     }
 
     std::string to_string() const override {
-        return to_string(std::is_same<weight_t, void>());
+        // FIXME: Don't duplicate code
+        auto is_valid = [](const edge_t e) -> bool {
+            return e.tail != e.head;
+        };
+
+        return _to_string(is_valid);
     }
 
     void add_edges(const size_t edges_no) {
