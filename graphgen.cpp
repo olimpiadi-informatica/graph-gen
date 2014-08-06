@@ -90,9 +90,9 @@ extern "C" {
         PyObject* kwds
     ) {
         size_t num;
-        int min, max;
+        long long min, max;
 
-        if (!PyArg_ParseTuple(args, "nii", &num, &min, &max))
+        if (!PyArg_ParseTuple(args, "nLL", &num, &min, &max))
             return -1;
         if (self->rs) {
             // Someone who feels playful could call __init__() twice
@@ -167,8 +167,8 @@ extern "C" {
         PyObject *args,
         PyObject *kwds
     ) {
-        int sz;
-        if (!PyArg_ParseTuple(args, "i", &sz))
+        size_t sz;
+        if (!PyArg_ParseTuple(args, "n", &sz))
             return -1;
         if (self->disjoint_set) {
             // Someone who feels playful could call __init__() twice
@@ -190,8 +190,8 @@ extern "C" {
         PyObject *args,
         PyObject *kwds
     ) {
-        int a;
-        if (!PyArg_ParseTuple(args, "i", &a))
+        size_t a;
+        if (!PyArg_ParseTuple(args, "n", &a))
             return NULL;
         if (a<0 || a>=self->disjoint_set->size()) {
             PyErr_SetString(PyExc_ValueError, "Value out of range!");
@@ -205,11 +205,10 @@ extern "C" {
         PyObject *args,
         PyObject *kwds
     ) {
-        int a, b;
-        if (!PyArg_ParseTuple(args, "ii", &a, &b))
+        size_t a, b;
+        if (!PyArg_ParseTuple(args, "nn", &a, &b))
             return NULL;
-        if (a<0 || a>=self->disjoint_set->size() ||
-            b<0 || b>=self->disjoint_set->size()) {
+        if (a>=self->disjoint_set->size() || b>=self->disjoint_set->size()) {
             PyErr_SetString(PyExc_ValueError, "Values out of range!");
             return NULL;
         }
