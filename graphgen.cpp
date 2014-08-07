@@ -1,6 +1,15 @@
 #include "Python.h"
 #include "graphgen.hpp"
 
+#define CATCH(ret) \
+    catch(PythonException& e) { \
+        return ret; \
+    } \
+    catch(std::exception& e) { \
+        PyErr_SetString(PyExc_ValueError, e.what()); \
+        return ret; \
+    }
+
 class PythonException: public std::exception {
     virtual const char* what() const noexcept {
         return "A Python exception happened!";
@@ -276,12 +285,7 @@ extern "C" {
         }
         try {
             self->rs = new RangeSampler(num, min, max);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return -1;
-        }
-
+        } CATCH(-1)
         return 0;
     }
 
@@ -352,11 +356,7 @@ extern "C" {
         }
         try {
             self->disjoint_set = new DisjointSet(sz);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return -1;
-        }
+        } CATCH(-1)
         return 0;
     }
 
@@ -482,11 +482,7 @@ extern "C" {
                 *(self->labeler),
                 *(self->weighter)
             );
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return -1;
-        }
+        } CATCH(-1)
         return 0;
     }
 
@@ -494,14 +490,7 @@ extern "C" {
         try {
             const std::string& repr = ((UGObj*)self)->g->to_string();
             return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
-        }
-        catch(PythonException& e) {
-            return NULL;
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
     }
 
     static PyObject* UG_add_edge (
@@ -514,11 +503,7 @@ extern "C" {
             return NULL;
         try {
             self->g->add_edge(a, b);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -532,11 +517,7 @@ extern "C" {
             return NULL;
         try {
             self->g->add_edges(M);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -550,88 +531,56 @@ extern "C" {
             return NULL;
         try {
             self->g->build_forest(M);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_connect(UGObj* self) {
         try {
             self->g->connect();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_path(UGObj* self) {
         try {
             self->g->build_path();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_cycle(UGObj* self) {
         try {
             self->g->build_cycle();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_tree(UGObj* self) {
         try {
             self->g->build_tree();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_star(UGObj* self) {
         try {
             self->g->build_star();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_wheel(UGObj* self) {
         try {
             self->g->build_wheel();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* UG_build_clique(UGObj* self) {
         try {
             self->g->build_clique();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -738,11 +687,7 @@ extern "C" {
                 *(self->labeler),
                 *(self->weighter)
             );
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return -1;
-        }
+        } CATCH(-1)
         return 0;
     }
 
@@ -750,14 +695,7 @@ extern "C" {
         try {
             const std::string& repr = ((DGObj*)self)->g->to_string();
             return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
-        }
-        catch(PythonException& e) {
-            return NULL;
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        };
+        } CATCH(NULL)
     }
 
     static PyObject* DG_add_edge (
@@ -770,11 +708,7 @@ extern "C" {
             return NULL;
         try {
             self->g->add_edge(a, b);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -788,11 +722,7 @@ extern "C" {
             return NULL;
         try {
             self->g->add_edges(M);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -806,11 +736,7 @@ extern "C" {
             return NULL;
         try {
             self->g->build_forest(M);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -824,66 +750,42 @@ extern "C" {
             return NULL;
         try {
             self->g->build_dag(M);
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* DG_connect(DGObj* self) {
         try {
             self->g->connect();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* DG_build_path(DGObj* self) {
         try {
             self->g->build_path();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* DG_build_cycle(DGObj* self) {
         try {
             self->g->build_cycle();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* DG_build_tree(DGObj* self) {
         try {
             self->g->build_tree();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
     static PyObject* DG_build_star(DGObj* self) {
         try {
             self->g->build_star();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
@@ -901,11 +803,7 @@ extern "C" {
     static PyObject* DG_build_clique(DGObj* self) {
         try {
             self->g->build_clique();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
+        } CATCH(NULL)
         Py_RETURN_NONE;
     }
 
