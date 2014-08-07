@@ -86,15 +86,15 @@ namespace Random {
 namespace utils {
     template<typename T>
     void write_weight(
-        const Weighter<T>& weighter,
+        Weighter<T>& weighter,
         const edge_t& edge,
         std::ostream& os
     ) {
-        return os << " " << weighter(edge);
-    };
+        os << " " << weighter(edge);
+    }
 
     template<>
-    void write_weight(const Weighter<void>&, const edge_t&, std::ostream&) {}
+    void write_weight(Weighter<void>&, const edge_t&, std::ostream&) {}
 }
 
 /**
@@ -361,6 +361,8 @@ public:
         Weighter<weight_t>& weighter
     ): vertices_no(vertices_no), labeler(labeler), weighter(weighter) { }
 
+    virtual ~Graph() {};
+
     // Interface methods
     virtual void add_edge(const vertex_t a, const vertex_t b) = 0;
     virtual std::string to_string() const = 0;
@@ -479,6 +481,8 @@ private:
 public:
     using Graph<label_t, weight_t>::Graph;
 
+    ~UndirectedGraph() {};
+
     void add_edge(const vertex_t tail, const vertex_t head) override {
         adj_list.insert({tail, head});
         adj_list.insert({head, tail});
@@ -556,6 +560,7 @@ private:
 public:
     using Graph<label_t, weight_t>::Graph;
 
+    ~DirectedGraph() {};
 
     void add_edge(const vertex_t tail, const vertex_t head) override {
         adj_list.insert({tail, head});

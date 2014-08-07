@@ -23,7 +23,7 @@ from distutils.core import setup, Extension
 
 
 module = Extension('graphgen', sources = ['graphgen.cpp'])
-module.extra_compile_args = ['--std=c++11'];
+module.extra_compile_args = ['--std=c++11', '-Wall', '-pedantic', '-g'];
 
 headers_path = os.path.join("include", "graphgen")
 

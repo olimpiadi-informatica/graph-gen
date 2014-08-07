@@ -1,6 +1,181 @@
 #include "Python.h"
 #include "graphgen.hpp"
 
+class PythonException: public std::exception {
+    virtual const char* what() const noexcept {
+        return "A Python exception happened!";
+    }
+};
+
+class WTFException: public std::exception {
+    virtual const char* what() const noexcept {
+        return "WTF just happened?!?";
+    }
+};
+
+struct pyObject {
+    enum type_t { VAL_VOID, VAL_INT, VAL_DOUBLE, VAL_PYOBJECT };
+    union {
+        int _int;
+        double _double;
+        PyObject* _PyObject;
+    } stored_val;
+    type_t type;
+
+    pyObject(): type(VAL_VOID) { }
+
+    pyObject(int v): type(VAL_INT) {
+        stored_val._int = v;
+    }
+
+    pyObject(double v): type(VAL_DOUBLE) {
+        stored_val._double = v;
+    }
+
+    pyObject(PyObject* v): type(VAL_PYOBJECT) {
+        Py_INCREF(v);
+        stored_val._PyObject = v;
+    }
+
+    ~pyObject() {
+        if (type == VAL_PYOBJECT) {
+            Py_DECREF(stored_val._PyObject);
+        }
+    }
+};
+
+std::ostream& operator<<(std::ostream& os, const pyObject& obj) {
+    PyObject* strrepr;
+    char* str;
+    switch (obj.type) {
+        case pyObject::VAL_VOID: break;
+        case pyObject::VAL_INT:
+            os << obj.stored_val._int;
+            break;
+        case pyObject::VAL_DOUBLE:
+            os << obj.stored_val._double;
+            break;
+        case pyObject::VAL_PYOBJECT:
+            strrepr = PyObject_Str(obj.stored_val._PyObject);
+            if (!strrepr) throw PythonException();
+            str = PyString_AsString(strrepr);
+            if (!str) throw PythonException();
+            os << str;
+            Py_DECREF(strrepr);
+            break;
+        default:
+            throw WTFException();
+    }
+    return os;
+}
+
+template<typename T>
+class pyLabelerWrapper: public Labeler<pyObject> {
+private:
+    Labeler<T>* l;
+
+public:
+    pyLabelerWrapper(Labeler<T>* l): l(l) {}
+    ~pyLabelerWrapper() {
+        delete l;
+    }
+
+    pyObject operator()(vertex_t v) override {
+        T val = (*l)(v);
+        return val;
+    }
+};
+
+template<typename T>
+class pyWeighterWrapper: public Weighter<pyObject> {
+private:
+    Weighter<T>* w;
+
+public:
+    pyWeighterWrapper(Weighter<T>& w): w(w) {}
+    ~pyWeighterWrapper() {
+        delete w;
+    }
+
+    pyObject operator()(const edge_t& e) override {
+        return (*w)(e);
+    }
+};
+
+// I hate void
+
+template<>
+class pyWeighterWrapper<void>: public Weighter<pyObject> {
+private:
+    Weighter<void>* w;
+
+public:
+    pyWeighterWrapper(Weighter<void>* w): w(w) {}
+    ~pyWeighterWrapper() {
+        delete w;
+    }
+
+    pyObject operator()(const edge_t& e) override {
+        return pyObject();
+    }
+};
+
+// Both pyLabeler and pyWeighter will fail horribly if the object passed
+// to the constructor are not callable
+
+class pyLabeler: public Labeler<pyObject> {
+private:
+    PyObject* lbl;
+
+public:
+    pyLabeler(PyObject* l): lbl(l) {
+        Py_INCREF(lbl);
+    }
+
+    ~pyLabeler() {
+        Py_DECREF(lbl);
+    }
+
+    pyObject operator()(const vertex_t& v) {
+        PyObject* res = PyObject_CallFunction(
+            lbl,
+            const_cast<char*>("n"),
+            v
+        );
+        if (!res) throw PythonException();
+        pyObject&& obj = pyObject(res);
+        Py_DECREF(res);
+        return obj;
+    }
+};
+
+class pyWeighter: public Weighter<pyObject> {
+private:
+    PyObject* w;
+
+public:
+    pyWeighter(PyObject* w): w(w) {
+        Py_INCREF(w);
+    }
+
+    ~pyWeighter() {
+        Py_DECREF(w);
+    }
+
+    pyObject operator()(const edge_t& e) {
+        PyObject* res = PyObject_CallFunction(
+            w,
+            const_cast<char*>("nn"),
+            e.tail,
+            e.head
+        );
+        if (!res) throw PythonException();
+        pyObject&& obj = pyObject(res);
+        Py_DECREF(res);
+        return obj;
+    }
+};
+
 extern "C" {
 
     static PyObject * GG_srand(PyObject *self, PyObject *args) {
@@ -270,11 +445,11 @@ extern "C" {
 
     typedef struct {
         PyObject_HEAD
-        UndirectedGraph<int>* g;
+        UndirectedGraph<pyObject, pyObject>* g;
 
         // FIXME
-        IotaLabeler* labeler;
-        NoWeighter* weighter;
+        Labeler<pyObject>* labeler;
+        Weighter<pyObject>* weighter;
     } UGObj;
 
     static void UG_dealloc(UGObj* self) {
@@ -300,9 +475,13 @@ extern "C" {
             self->g = NULL;
         }
         try {
-            self->labeler = new IotaLabeler();
-            self->weighter = new NoWeighter();
-            self->g = new UndirectedGraph<int>(sz, *(self->labeler), *(self->weighter));
+            self->labeler = new pyLabelerWrapper<int>(new IotaLabeler());
+            self->weighter = new pyWeighterWrapper<void>(new NoWeighter());
+            self->g = new UndirectedGraph<pyObject, pyObject>(
+                sz,
+                *(self->labeler),
+                *(self->weighter)
+            );
         }
         catch(std::exception& e) {
             PyErr_SetString(PyExc_ValueError, e.what());
@@ -312,8 +491,17 @@ extern "C" {
     }
 
     static PyObject* UG_str(PyObject* self) {
-        const std::string& repr = ((UGObj*)self)->g->to_string();
-        return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
+        try {
+            const std::string& repr = ((UGObj*)self)->g->to_string();
+            return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
+        }
+        catch(PythonException& e) {
+            return NULL;
+        }
+        catch(std::exception& e) {
+            PyErr_SetString(PyExc_ValueError, e.what());
+            return NULL;
+        }
     }
 
     static PyObject* UG_add_edge (
@@ -514,11 +702,10 @@ extern "C" {
 
     typedef struct {
         PyObject_HEAD
-        DirectedGraph<int>* g;
+        DirectedGraph<pyObject, pyObject>* g;
 
-        // FIXME
-        IotaLabeler* labeler;
-        NoWeighter* weighter;        
+        Labeler<pyObject>* labeler;
+        Weighter<pyObject>* weighter;
     } DGObj;
 
     static void DG_dealloc(DGObj* self) {
@@ -544,9 +731,13 @@ extern "C" {
             self->g = NULL;
         }
         try {
-            self->labeler = new IotaLabeler();
-            self->weighter = new NoWeighter();
-            self->g = new DirectedGraph<int>(sz, *(self->labeler), *(self->weighter));
+            self->labeler = new pyLabelerWrapper<int>(new IotaLabeler());
+            self->weighter = new pyWeighterWrapper<void>(new NoWeighter());
+            self->g = new DirectedGraph<pyObject, pyObject>(
+                sz,
+                *(self->labeler),
+                *(self->weighter)
+            );
         }
         catch(std::exception& e) {
             PyErr_SetString(PyExc_ValueError, e.what());
@@ -556,8 +747,17 @@ extern "C" {
     }
 
     static PyObject* DG_str(PyObject* self) {
-        const std::string& repr = ((DGObj*)self)->g->to_string();
-        return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
+        try {
+            const std::string& repr = ((DGObj*)self)->g->to_string();
+            return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
+        }
+        catch(PythonException& e) {
+            return NULL;
+        }
+        catch(std::exception& e) {
+            PyErr_SetString(PyExc_ValueError, e.what());
+            return NULL;
+        };
     }
 
     static PyObject* DG_add_edge (
