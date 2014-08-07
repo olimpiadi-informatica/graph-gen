@@ -10,6 +10,84 @@
         return ret; \
     }
 
+#define METHOD_VOIDVOID(obj, name) \
+    static PyObject* obj ## _ ## name(obj ## Obj* self) { \
+        try { \
+            self->g->name(); \
+        } CATCH(NULL) \
+        Py_RETURN_NONE; \
+    }
+
+#define METHOD_VOIDINT(obj, name) \
+    static PyObject* obj ## _ ## name( \
+        obj ## Obj* self, \
+        PyObject *args, \
+        PyObject *kwds \
+    ) { \
+        int param; \
+        if (!PyArg_ParseTuple(args, "i", &param)) \
+            return NULL; \
+        try { \
+            self->g->name(param); \
+        } CATCH(NULL) \
+        Py_RETURN_NONE; \
+    }
+
+#define ADD_OBJECT(module, obj) \
+        if (PyType_Ready(&obj ## Type) < 0) return; \
+        Py_INCREF(&obj ## Type); \
+        PyModule_AddObject(module, #obj, (PyObject *)&obj ## Type);
+
+#define DEF_NOARGS(obj, name, descr) \
+    {#name, (PyCFunction)obj ## _ ## name, METH_NOARGS, descr}
+
+#define DEF_ARGS(obj, name, descr) \
+    {#name, (PyCFunction)obj ## _ ## name, METH_VARARGS, descr}
+
+#define NEW_TYPE(obj, doc) \
+    static PyTypeObject obj ## Type = { \
+        PyObject_HEAD_INIT(NULL) \
+        0,                                  /* ob_size */ \
+        "graphgen." #obj,                   /* tp_name */ \
+        sizeof(obj ## Obj),                 /* tp_basicsize */ \
+        0,                                  /* tp_itemsize */ \
+        (destructor) obj ## _dealloc,       /* tp_dealloc */ \
+        0,                                  /* tp_print */ \
+        0,                                  /* tp_getattr */ \
+        0,                                  /* tp_setattr */ \
+        0,                                  /* tp_compare */ \
+        0,                                  /* tp_repr */ \
+        0,                                  /* tp_as_number */ \
+        0,                                  /* tp_as_sequence */ \
+        0,                                  /* tp_as_mapping */ \
+        0,                                  /* tp_hash */ \
+        0,                                  /* tp_call */ \
+        obj ## _str,                        /* tp_str */ \
+        0,                                  /* tp_getattro */ \
+        0,                                  /* tp_setattro */ \
+        0,                                  /* tp_as_buffer */ \
+        Py_TPFLAGS_DEFAULT,                 /* tp_flags */ \
+        doc,                                /* tp_doc */ \
+        0,                                  /* tp_traverse */ \
+        0,                                  /* tp_clear */ \
+        0,                                  /* tp_richcompare */ \
+        0,                                  /* tp_weaklistoffset */ \
+        (getiterfunc) obj ## _iter,         /* tp_iter */ \
+        (iternextfunc) obj ## _iternext,    /* tp_iternext */ \
+        obj ## _methods,                    /* tp_methods */ \
+        0,                                  /* tp_members */ \
+        0,                                  /* tp_getset */ \
+        0,                                  /* tp_base */ \
+        0,                                  /* tp_dict */ \
+        0,                                  /* tp_descr_get */ \
+        0,                                  /* tp_descr_set */ \
+        0,                                  /* tp_dictoffset */ \
+        (initproc) obj ## _init,            /* tp_init */ \
+        PyType_GenericAlloc,                /* tp_alloc */ \
+        PyType_GenericNew                   /* tp_new */ \
+    };
+
+
 class PythonException: public std::exception {
     virtual const char* what() const noexcept {
         return "A Python exception happened!";
@@ -187,6 +265,8 @@ public:
 
 extern "C" {
 
+    // Module methods
+
     static PyObject * GG_srand(PyObject *self, PyObject *args) {
         int s;
         if (!PyArg_ParseTuple(args, "i", &s))
@@ -195,80 +275,65 @@ extern "C" {
         Py_RETURN_NONE;
     }
 
+    static PyMethodDef graphgen_methods[] = {
+        DEF_ARGS(GG, srand, "Call srand()."),
+        {NULL}
+    };
+
+    // RangeSamplerIterator
+
     typedef struct {
         PyObject_HEAD
         std::vector<int64_t>::iterator it;
         std::vector<int64_t>::iterator end;
-    } RSIteratorObj;
+    } RangeSamplerIteratorObj;
 
-    static PyObject* RSI_next(RSIteratorObj* RSI) {
-        if (RSI->it == RSI->end)
+    static initproc RangeSamplerIterator_init = 0;
+    static reprfunc RangeSamplerIterator_str = 0;
+    static PyMethodDef* RangeSamplerIterator_methods = 0;
+    static getiterfunc RangeSamplerIterator_iter = PyObject_SelfIter;
+
+    static void RangeSamplerIterator_dealloc(PyObject* self) {
+        self->ob_type->tp_free(self);
+    }
+
+    static PyObject* RangeSamplerIterator_iternext(
+        RangeSamplerIteratorObj* RangeSamplerIterator
+    ) {
+        if (RangeSamplerIterator->it == RangeSamplerIterator->end)
             return NULL;
-        PyObject* res = PyInt_FromLong((long)*RSI->it);
-        RSI->it++;
+        PyObject* res = PyInt_FromLong((long)*RangeSamplerIterator->it);
+        RangeSamplerIterator->it++;
         return res;
     }
 
-    static PyTypeObject RSIteratorType = {
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size */
-        "graphgen.RangeSamplerIterator",    /* tp_name */
-        sizeof(RSIteratorObj),              /* tp_basicsize */
-        0,                                  /* tp_itemsize */
-        0,                                  /* tp_dealloc */
-        0,                                  /* tp_print */
-        0,                                  /* tp_getattr */
-        0,                                  /* tp_setattr */
-        0,                                  /* tp_compare */
-        0,                                  /* tp_repr */
-        0,                                  /* tp_as_number */
-        0,                                  /* tp_as_sequence */
-        0,                                  /* tp_as_mapping */
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call */
-        0,                                  /* tp_str */
-        0,                                  /* tp_getattro */
-        0,                                  /* tp_setattro */
-        0,                                  /* tp_as_buffer */
-        Py_TPFLAGS_DEFAULT,                 /* tp_flags */
-        "RangeSampler iterator",            /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-        PyObject_SelfIter,                  /* tp_iter */
-        (iternextfunc)RSI_next,             /* tp_iternext */
-        0,                                  /* tp_methods */
-        0,                                  /* tp_members */
-        0,                                  /* tp_getset */
-        0,                                  /* tp_base */
-        0,                                  /* tp_dict */
-        0,                                  /* tp_descr_get */
-        0,                                  /* tp_descr_set */
-        0,                                  /* tp_dictoffset */
-        0,                                  /* tp_init */
-        PyType_GenericAlloc,                /* tp_alloc */
-    };
+    NEW_TYPE(RangeSamplerIterator, "Iterator over a RangeSampler")
+
+    // RangeSampler
 
     typedef struct {
         PyObject_HEAD
         RangeSampler* rs;
     } RangeSamplerObj;
 
-    static void RS_dealloc(RangeSamplerObj* self) {
+    static reprfunc RangeSampler_str = 0;
+    static PyMethodDef* RangeSampler_methods = 0;
+    static iternextfunc RangeSampler_iternext = 0;
+
+    static void RangeSampler_dealloc(RangeSamplerObj* self) {
         if (self->rs)
             delete self->rs;
         self->ob_type->tp_free((PyObject*)self);
     }
 
-    static PyObject* RS_iter(RangeSamplerObj* self) {
-        auto res = (RSIteratorObj*) PyType_GenericAlloc(&RSIteratorType, 0);
+    static PyObject* RangeSampler_iter(RangeSamplerObj* self) {
+        auto res = (RangeSamplerIteratorObj*) PyType_GenericAlloc(&RangeSamplerIteratorType, 0);
         res->it = self->rs->begin();
         res->end = self->rs->end();
         return (PyObject*) res;
     }
 
-    static int RS_init(
+    static int RangeSampler_init(
         RangeSamplerObj* self,
         PyObject* args,
         PyObject* kwds
@@ -289,51 +354,18 @@ extern "C" {
         return 0;
     }
 
-    static PyTypeObject RangeSamplerType = {
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size */
-        "graphgen.RangeSampler",            /* tp_name */
-        sizeof(RangeSamplerObj),            /* tp_basicsize */
-        0,                                  /* tp_itemsize */
-        (destructor)RS_dealloc,             /* tp_dealloc */
-        0,                                  /* tp_print */
-        0,                                  /* tp_getattr */
-        0,                                  /* tp_setattr */
-        0,                                  /* tp_compare */
-        0,                                  /* tp_repr */
-        0,                                  /* tp_as_number */
-        0,                                  /* tp_as_sequence */
-        0,                                  /* tp_as_mapping */
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call */
-        0,                                  /* tp_str */
-        0,                                  /* tp_getattro */
-        0,                                  /* tp_setattro */
-        0,                                  /* tp_as_buffer */
-        Py_TPFLAGS_DEFAULT,                 /* tp_flags */
-        "RangeSampler",                     /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-        (getiterfunc) RS_iter,              /* tp_iter */
-        0,                                  /* tp_iternext */
-        0,                                  /* tp_methods */
-        0,                                  /* tp_members */
-        0,                                  /* tp_getset */
-        0,                                  /* tp_base */
-        0,                                  /* tp_dict */
-        0,                                  /* tp_descr_get */
-        0,                                  /* tp_descr_set */
-        0,                                  /* tp_dictoffset */
-        (initproc) RS_init,                 /* tp_init */
-        PyType_GenericAlloc,                /* tp_alloc */
-    };
+    NEW_TYPE(RangeSampler, "RangeSampler")
+
+    // DisjointSet
 
     typedef struct {
         PyObject_HEAD
         DisjointSet* disjoint_set;
     } DisjointSetObj;
+
+    static reprfunc DisjointSet_str = 0;
+    static getiterfunc DisjointSet_iter = 0;
+    static iternextfunc DisjointSet_iternext = 0;
 
     static void DisjointSet_dealloc(DisjointSetObj* self) {
         if (self->disjoint_set)
@@ -395,72 +427,34 @@ extern "C" {
     }
 
     static PyMethodDef DisjointSet_methods[] = {
-        {"find", (PyCFunction)DisjointSet_find, METH_VARARGS,
-         "Find the representative of an element."},
-        {"merge", (PyCFunction)DisjointSet_merge, METH_VARARGS,
-         "Merge two sets together."},
+        DEF_ARGS(DisjointSet, find, "Find the representative of an element."),
+        DEF_ARGS(DisjointSet, merge, "Merge two sets together."),
         {NULL}
     };
 
-    static PyTypeObject DisjointSetType = {
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size */
-        "graphgen.DisjointSet",             /* tp_name */
-        sizeof(DisjointSetObj),             /* tp_basicsize */
-        0,                                  /* tp_itemsize */
-        (destructor) DisjointSet_dealloc,   /* tp_dealloc */
-        0,                                  /* tp_print */
-        0,                                  /* tp_getattr */
-        0,                                  /* tp_setattr */
-        0,                                  /* tp_compare */
-        0,                                  /* tp_repr */
-        0,                                  /* tp_as_number */
-        0,                                  /* tp_as_sequence */
-        0,                                  /* tp_as_mapping */
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call */
-        0,                                  /* tp_str */
-        0,                                  /* tp_getattro */
-        0,                                  /* tp_setattro */
-        0,                                  /* tp_as_buffer */
-        Py_TPFLAGS_DEFAULT,                 /* tp_flags */
-        "Disjoint Set data structure",      /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-        0,                                  /* tp_iter */
-        0,                                  /* tp_iternext */
-        DisjointSet_methods,                /* tp_methods */
-        0,                                  /* tp_members */
-        0,                                  /* tp_getset */
-        0,                                  /* tp_base */
-        0,                                  /* tp_dict */
-        0,                                  /* tp_descr_get */
-        0,                                  /* tp_descr_set */
-        0,                                  /* tp_dictoffset */
-        (initproc) DisjointSet_init,        /* tp_init */
-        PyType_GenericAlloc,                /* tp_alloc */
-    };
+    NEW_TYPE(DisjointSet, "Disjoint Set data structure.")
+
+    // UndirectedGraph
 
     typedef struct {
         PyObject_HEAD
         UndirectedGraph<pyObject, pyObject>* g;
-
-        // FIXME
         Labeler<pyObject>* labeler;
         Weighter<pyObject>* weighter;
-    } UGObj;
+    } UndirectedGraphObj;
 
-    static void UG_dealloc(UGObj* self) {
+    static getiterfunc UndirectedGraph_iter = 0;
+    static iternextfunc UndirectedGraph_iternext = 0;
+
+    static void UndirectedGraph_dealloc(UndirectedGraphObj* self) {
         if (self->g) delete self->g;
         if (self->labeler) delete self->labeler;
         if (self->weighter) delete self->weighter;
         self->ob_type->tp_free((PyObject*)self);
     }
 
-    static int UG_init (
-        UGObj *self,
+    static int UndirectedGraph_init (
+        UndirectedGraphObj *self,
         PyObject *args,
         PyObject *kwds
     ) {
@@ -486,15 +480,15 @@ extern "C" {
         return 0;
     }
 
-    static PyObject* UG_str(PyObject* self) {
+    static PyObject* UndirectedGraph_str(PyObject* self) {
         try {
-            const std::string& repr = ((UGObj*)self)->g->to_string();
+            const std::string& repr = ((UndirectedGraphObj*)self)->g->to_string();
             return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
         } CATCH(NULL)
     }
 
-    static PyObject* UG_add_edge (
-        UGObj* self,
+    static PyObject* UndirectedGraph_add_edge (
+        UndirectedGraphObj* self,
         PyObject *args,
         PyObject *kwds
     ) {
@@ -507,147 +501,33 @@ extern "C" {
         Py_RETURN_NONE;
     }
 
-    static PyObject* UG_add_edges (
-        UGObj* self,
-        PyObject *args,
-        PyObject *kwds
-    ) {
-        int M;
-        if (!PyArg_ParseTuple(args, "i", &M))
-            return NULL;
-        try {
-            self->g->add_edges(M);
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
+    METHOD_VOIDINT(UndirectedGraph, add_edges)
+    METHOD_VOIDINT(UndirectedGraph, build_forest)
+    METHOD_VOIDVOID(UndirectedGraph, connect)
+    METHOD_VOIDVOID(UndirectedGraph, build_path)
+    METHOD_VOIDVOID(UndirectedGraph, build_cycle)
+    METHOD_VOIDVOID(UndirectedGraph, build_tree)
+    METHOD_VOIDVOID(UndirectedGraph, build_star)
+    METHOD_VOIDVOID(UndirectedGraph, build_wheel)
+    METHOD_VOIDVOID(UndirectedGraph, build_clique)
 
-    static PyObject* UG_build_forest (
-        UGObj* self,
-        PyObject *args,
-        PyObject *kwds
-    ) {
-        int M;
-        if (!PyArg_ParseTuple(args, "i", &M))
-            return NULL;
-        try {
-            self->g->build_forest(M);
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_connect(UGObj* self) {
-        try {
-            self->g->connect();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_path(UGObj* self) {
-        try {
-            self->g->build_path();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_cycle(UGObj* self) {
-        try {
-            self->g->build_cycle();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_tree(UGObj* self) {
-        try {
-            self->g->build_tree();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_star(UGObj* self) {
-        try {
-            self->g->build_star();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_wheel(UGObj* self) {
-        try {
-            self->g->build_wheel();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* UG_build_clique(UGObj* self) {
-        try {
-            self->g->build_clique();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyMethodDef UG_methods[] = {
-        {"add_edge", (PyCFunction)UG_add_edge, METH_VARARGS,
-         "Add an edge to the graph."},
-        {"add_edges", (PyCFunction)UG_add_edges, METH_VARARGS,
-         "Add some new edges to the graph."},
-        {"connect", (PyCFunction)UG_connect, METH_NOARGS,
-         "Add the minimum number of edges to make the graph connected."},
-        {"build_forest", (PyCFunction)UG_build_forest, METH_VARARGS,
-         "Creates a forest with the given number of edges."},
-        {"build_path", (PyCFunction)UG_build_path, METH_NOARGS,
-         "Creates a path."},
-        {"build_cycle", (PyCFunction)UG_build_cycle, METH_NOARGS,
-         "Creates a cycle."},
-        {"build_tree", (PyCFunction)UG_build_tree, METH_NOARGS,
-         "Creates a tree."},
-        {"build_star", (PyCFunction)UG_build_star, METH_NOARGS,
-         "Creates a star."},
-        {"build_wheel", (PyCFunction)UG_build_wheel, METH_NOARGS,
-         "Creates a wheel."},
-        {"build_clique", (PyCFunction)UG_build_clique, METH_NOARGS,
-         "Creates a clique."},
+    static PyMethodDef UndirectedGraph_methods[] = {
+        DEF_ARGS(UndirectedGraph, add_edge, "Add an edge to the graph."),
+        DEF_ARGS(UndirectedGraph, add_edges, "Add some new edges to the graph."),
+        DEF_NOARGS(UndirectedGraph, connect, "Make the graph connected."),
+        DEF_ARGS(UndirectedGraph, build_forest, "Creates a forest with M edges."),
+        DEF_NOARGS(UndirectedGraph, build_path, "Creates a path."),
+        DEF_NOARGS(UndirectedGraph, build_cycle, "Creates a cycle."),
+        DEF_NOARGS(UndirectedGraph, build_tree, "Creates a tree."),
+        DEF_NOARGS(UndirectedGraph, build_star, "Creates a star."),
+        DEF_NOARGS(UndirectedGraph, build_wheel, "Creates a wheel."),
+        DEF_NOARGS(UndirectedGraph, build_clique, "Creates a clique."),
         {NULL}
     };
 
-    static PyTypeObject UGType = {
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size*/
-        "graphgen.UndirectedGraph",         /* tp_name*/
-        sizeof(UGObj),                      /* tp_basicsize*/
-        0,                                  /* tp_itemsize*/
-        (destructor) UG_dealloc,            /* tp_dealloc*/
-        0,                                  /* tp_print*/
-        0,                                  /* tp_getattr*/
-        0,                                  /* tp_setattr*/
-        0,                                  /* tp_compare*/
-        0,                                  /* tp_repr*/
-        0,                                  /* tp_as_number*/
-        0,                                  /* tp_as_sequence*/
-        0,                                  /* tp_as_mapping*/
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call*/
-        UG_str,                             /* tp_str*/
-        0,                                  /* tp_getattro*/
-        0,                                  /* tp_setattro*/
-        0,                                  /* tp_as_buffer*/
-        Py_TPFLAGS_DEFAULT,                 /* tp_flags*/
-        "Undirected graph",                 /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-        0,                                  /* tp_iter */
-        0,                                  /* tp_iternext */
-        UG_methods,                         /* tp_methods */
-        0,                                  /* tp_members */
-        0,                                  /* tp_getset */
-        0,                                  /* tp_base */
-        0,                                  /* tp_dict */
-        0,                                  /* tp_descr_get */
-        0,                                  /* tp_descr_set */
-        0,                                  /* tp_dictoffset */
-        (initproc) UG_init,                 /* tp_init */
-        PyType_GenericAlloc,                /* tp_alloc */
-    };
+    NEW_TYPE(UndirectedGraph, "Undirected graph")
+
+    // Directed graph
 
     typedef struct {
         PyObject_HEAD
@@ -655,17 +535,20 @@ extern "C" {
 
         Labeler<pyObject>* labeler;
         Weighter<pyObject>* weighter;
-    } DGObj;
+    } DirectedGraphObj;
 
-    static void DG_dealloc(DGObj* self) {
+    static getiterfunc DirectedGraph_iter = 0;
+    static iternextfunc DirectedGraph_iternext = 0;
+
+    static void DirectedGraph_dealloc(DirectedGraphObj* self) {
         if (self->g) delete self->g;
         if (self->labeler) delete self->labeler;
         if (self->weighter) delete self->weighter;
         self->ob_type->tp_free((PyObject*)self);
     }
 
-    static int DG_init (
-        DGObj* self,
+    static int DirectedGraph_init (
+        DirectedGraphObj* self,
         PyObject *args,
         PyObject *kwds
     ) {
@@ -691,15 +574,15 @@ extern "C" {
         return 0;
     }
 
-    static PyObject* DG_str(PyObject* self) {
+    static PyObject* DirectedGraph_str(PyObject* self) {
         try {
-            const std::string& repr = ((DGObj*)self)->g->to_string();
+            const std::string& repr = ((DirectedGraphObj*)self)->g->to_string();
             return PyString_FromStringAndSize(repr.c_str(), repr.size()-1);
         } CATCH(NULL)
     }
 
-    static PyObject* DG_add_edge (
-        DGObj* self,
+    static PyObject* DirectedGraph_add_edge (
+        DirectedGraphObj* self,
         PyObject *args,
         PyObject *kwds
     ) {
@@ -712,200 +595,48 @@ extern "C" {
         Py_RETURN_NONE;
     }
 
-    static PyObject* DG_add_edges (
-        DGObj* self,
-        PyObject *args,
-        PyObject *kwds
-    ) {
-        int M;
-        if (!PyArg_ParseTuple(args, "i", &M))
-            return NULL;
-        try {
-            self->g->add_edges(M);
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
 
-    static PyObject* DG_build_forest(
-        DGObj* self,
-        PyObject *args,
-        PyObject *kwds
-    ) {
-        int M;
-        if (!PyArg_ParseTuple(args, "i", &M))
-            return NULL;
-        try {
-            self->g->build_forest(M);
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
+    METHOD_VOIDINT(DirectedGraph, add_edges)
+    METHOD_VOIDINT(DirectedGraph, build_forest)
+    METHOD_VOIDINT(DirectedGraph, build_dag)
+    METHOD_VOIDVOID(DirectedGraph, connect)
+    METHOD_VOIDVOID(DirectedGraph, build_path)
+    METHOD_VOIDVOID(DirectedGraph, build_cycle)
+    METHOD_VOIDVOID(DirectedGraph, build_tree)
+    METHOD_VOIDVOID(DirectedGraph, build_star)
+    METHOD_VOIDVOID(DirectedGraph, build_wheel)
+    METHOD_VOIDVOID(DirectedGraph, build_clique)
 
-    static PyObject* DG_build_dag(
-        DGObj* self,
-        PyObject *args,
-        PyObject *kwds
-    ) {
-        int M;
-        if (!PyArg_ParseTuple(args, "i", &M))
-            return NULL;
-        try {
-            self->g->build_dag(M);
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_connect(DGObj* self) {
-        try {
-            self->g->connect();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_path(DGObj* self) {
-        try {
-            self->g->build_path();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_cycle(DGObj* self) {
-        try {
-            self->g->build_cycle();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_tree(DGObj* self) {
-        try {
-            self->g->build_tree();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_star(DGObj* self) {
-        try {
-            self->g->build_star();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_wheel(DGObj* self) {
-        try {
-            self->g->build_wheel();
-        }
-        catch(std::exception& e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return NULL;
-        }
-        Py_RETURN_NONE;
-    }
-
-    static PyObject* DG_build_clique(DGObj* self) {
-        try {
-            self->g->build_clique();
-        } CATCH(NULL)
-        Py_RETURN_NONE;
-    }
-
-    static PyMethodDef DG_methods[] = {
-        {"add_edge", (PyCFunction)DG_add_edge, METH_VARARGS,
-         "Add an edge to the graph."},
-        {"add_edges", (PyCFunction)DG_add_edges, METH_VARARGS,
-         "Add some new edges to the graph."},
-        {"connect", (PyCFunction)DG_connect, METH_NOARGS,
-         "Add the minimum number of edges to make the graph connected."},
-        {"build_forest", (PyCFunction)DG_build_forest, METH_VARARGS,
-         "Creates a forest with the given number of edges."},
-        {"build_dag", (PyCFunction)DG_build_dag, METH_VARARGS,
-         "Creates a forest with the given number of edges."},
-        {"build_path", (PyCFunction)DG_build_path, METH_NOARGS,
-         "Creates a path."},
-        {"build_cycle", (PyCFunction)DG_build_cycle, METH_NOARGS,
-         "Creates a cycle."},
-        {"build_tree", (PyCFunction)DG_build_tree, METH_NOARGS,
-         "Creates a tree."},
-        {"build_star", (PyCFunction)DG_build_star, METH_NOARGS,
-         "Creates a star."},
-        {"build_wheel", (PyCFunction)DG_build_wheel, METH_NOARGS,
-         "Creates a wheel."},
-        {"build_clique", (PyCFunction)DG_build_clique, METH_NOARGS,
-         "Creates a clique."},
+    static PyMethodDef DirectedGraph_methods[] = {
+        DEF_ARGS(DirectedGraph, add_edge, "Add an edge to the graph."),
+        DEF_ARGS(DirectedGraph, add_edges, "Add some new edges to the graph."),
+        DEF_NOARGS(DirectedGraph, connect, "Make the graph connected."),
+        DEF_ARGS(DirectedGraph, build_forest, "Creates a forest with M edges."),
+        DEF_ARGS(DirectedGraph, build_dag, "Creates a dag with M edges."),
+        DEF_NOARGS(DirectedGraph, build_path, "Creates a path."),
+        DEF_NOARGS(DirectedGraph, build_cycle, "Creates a cycle."),
+        DEF_NOARGS(DirectedGraph, build_tree, "Creates a tree."),
+        DEF_NOARGS(DirectedGraph, build_star, "Creates a star."),
+        DEF_NOARGS(DirectedGraph, build_wheel, "Creates a wheel."),
+        DEF_NOARGS(DirectedGraph, build_clique, "Creates a clique."),
         {NULL}
     };
 
-    static PyTypeObject DGType = {
-        PyObject_HEAD_INIT(NULL)
-        0,                                  /* ob_size */
-        "graphgen.DirectedGraph",           /* tp_name */
-        sizeof(DGObj),                      /* tp_basicsize */
-        0,                                  /* tp_itemsize */
-        (destructor) DG_dealloc,            /* tp_dealloc */
-        0,                                  /* tp_print */
-        0,                                  /* tp_getattr */
-        0,                                  /* tp_setattr */
-        0,                                  /* tp_compare */
-        0,                                  /* tp_repr */
-        0,                                  /* tp_as_number */
-        0,                                  /* tp_as_sequence */
-        0,                                  /* tp_as_mapping */
-        0,                                  /* tp_hash */
-        0,                                  /* tp_call */
-        DG_str,                             /* tp_str */
-        0,                                  /* tp_getattro */
-        0,                                  /* tp_setattro */
-        0,                                  /* tp_as_buffer */
-        Py_TPFLAGS_DEFAULT,                 /* tp_flags */
-        "Directed graph",                   /* tp_doc */
-        0,                                  /* tp_traverse */
-        0,                                  /* tp_clear */
-        0,                                  /* tp_richcompare */
-        0,                                  /* tp_weaklistoffset */
-        0,                                  /* tp_iter */
-        0,                                  /* tp_iternext */
-        DG_methods,                         /* tp_methods */
-        0,                                  /* tp_members */
-        0,                                  /* tp_getset */
-        0,                                  /* tp_base */
-        0,                                  /* tp_dict */
-        0,                                  /* tp_descr_get */
-        0,                                  /* tp_descr_set */
-        0,                                  /* tp_dictoffset */
-        (initproc) DG_init,                 /* tp_init */
-        PyType_GenericAlloc,                /* tp_alloc */
-    };
+    NEW_TYPE(DirectedGraph, "Directed graph")
 
-    static PyMethodDef graphgen_methods[] = {
-        {"srand", (PyCFunction)GG_srand, METH_VARARGS, "Call srand()"},
-        {NULL}  /* Sentinel */
-    };
+    // Module initialization function
 
     PyMODINIT_FUNC initgraphgen(void) {
         PyObject* m;
-        RangeSamplerType.tp_new = PyType_GenericNew;
-        RSIteratorType.tp_new = PyType_GenericNew;
-        DisjointSetType.tp_new = PyType_GenericNew;
-        UGType.tp_new = PyType_GenericNew;
-        DGType.tp_new = PyType_GenericNew;
-        if (PyType_Ready(&RangeSamplerType) < 0)
-            return;
-        if (PyType_Ready(&RSIteratorType) < 0)
-            return;
-        if (PyType_Ready(&DisjointSetType) < 0)
-            return;
-        if (PyType_Ready(&UGType) < 0)
-            return;
-        if (PyType_Ready(&DGType) < 0)
-            return;
-
-        m = Py_InitModule3("graphgen", graphgen_methods,
-                           "Module to generate graphs");
-
-        Py_INCREF(&RangeSamplerType);
-        Py_INCREF(&RSIteratorType);
-        PyModule_AddObject(m, "RangeSampler", (PyObject *)&RangeSamplerType);
-        PyModule_AddObject(m, "RangeSamplerIterator", (PyObject *)&RSIteratorType);
-        PyModule_AddObject(m, "DisjointSet", (PyObject *)&DisjointSetType);
-        PyModule_AddObject(m, "UndirectedGraph", (PyObject *)&UGType);
-        PyModule_AddObject(m, "DirectedGraph", (PyObject *)&DGType);
+        m = Py_InitModule3(
+            "graphgen",
+            graphgen_methods,
+            "Module to generate graphs"
+        );
+        ADD_OBJECT(m, RangeSampler)
+        ADD_OBJECT(m, RangeSamplerIterator)
+        ADD_OBJECT(m, DisjointSet)
+        ADD_OBJECT(m, UndirectedGraph)
+        ADD_OBJECT(m, DirectedGraph)
     }
 }
