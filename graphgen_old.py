@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# graph-gen - https://github.com/wil93/graph-gen
+# graph-gen - https://github.com/olimpiadi-informatica/graph-gen
 # Copyright © 2011-2012 Giorgio Audrito <giorgio.audrito@gmail.com>
 # Copyright © 2014 William Di Luigi <williamdiluigi@gmail.com>
 # Copyright © 2014 Gabriele Farina <gabr.farina@gmail.com>

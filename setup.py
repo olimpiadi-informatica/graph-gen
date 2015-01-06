@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# graph-gen - https://github.com/wil93/graph-gen
+# graph-gen - https://github.com/olimpiadi-informatica/graph-gen
 # Copyright © 2014 Gabriele Farina <gabr.farina@gmail.com>
 # Copyright © 2014 William Di Luigi <williamdiluigi@gmail.com>
 #
@@ -37,7 +37,7 @@ setup(
 	description = 'graph-gen: graph generation library for Python',
 	author = 'Giorgio Audrito, William Di Luigi, Gabriele Farina, Luca Versari',
 	author_email = 'giorgio.audrito@gmail.com, williamdiluigi@gmail.com, gabr.farina@gmail.com, veluca93@gmail.com',
-	url = 'https://github.com/wil93/graph-gen',
+	url = 'https://github.com/olimpiadi-informatica/graph-gen',
 	ext_modules = [module],
 	keywords = "graph generation library",
 	data_files = headers,
